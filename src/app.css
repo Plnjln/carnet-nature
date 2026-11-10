@@ -1,0 +1,133 @@
+/* Thème : contraste fort (lisible en plein soleil), grandes zones tactiles. */
+
+:root {
+  --fond: #f4f6f1;
+  --surface: #ffffff;
+  --texte: #10201a;
+  --texte-doux: #4a5a52;
+  --bord: #c9d3cc;
+  --accent: #17603f;
+  --sur-accent: #ffffff;
+  --alerte: #a1260d;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='clair']) {
+    --fond: #0c1611;
+    --surface: #16241d;
+    --texte: #f1f5f2;
+    --texte-doux: #a9b8b0;
+    --bord: #2c4036;
+    --accent: #5fd39a;
+    --sur-accent: #06140d;
+    --alerte: #ff8a70;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='sombre'] {
+  --fond: #0c1611;
+  --surface: #16241d;
+  --texte: #f1f5f2;
+  --texte-doux: #a9b8b0;
+  --bord: #2c4036;
+  --accent: #5fd39a;
+  --sur-accent: #06140d;
+  --alerte: #ff8a70;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--texte);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 8px;
+}
+
+h2 {
+  font-size: 1.15rem;
+  margin: 24px 0 8px;
+}
+
+p {
+  margin: 0 0 8px;
+}
+
+em {
+  font-style: italic;
+}
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px 16px 24px;
+}
+
+.doux {
+  color: var(--texte-doux);
+  font-size: 0.92rem;
+}
+
+.alerte {
+  color: var(--alerte);
+  font-weight: 600;
+}
+
+/* Bouton standard : au moins 56 px de haut, utilisable avec des gants. */
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 0 20px;
+  border-radius: 14px;
+  border: 2px solid var(--accent);
+  background: var(--accent);
+  color: var(--sur-accent);
+  font-weight: 700;
+}
+
+.bouton.secondaire {
+  background: transparent;
+  color: var(--accent);
+}
+
+.bouton.danger {
+  border-color: var(--alerte);
+  background: transparent;
+  color: var(--alerte);
+}
+
+.bouton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

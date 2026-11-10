@@ -1,0 +1,58 @@
+import { defineConfig } from 'vitest/config';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { VitePWA } from 'vite-plugin-pwa';
+
+// L'app est servie par GitHub Pages sous https://<compte>.github.io/carnet-nature/
+const BASE = '/carnet-nature/';
+
+export default defineConfig({
+  base: BASE,
+  plugins: [
+    svelte(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      includeAssets: ['icons/*.png'],
+      manifest: {
+        name: 'Carnet Nature',
+        short_name: 'Carnet',
+        description: 'Carnet hors ligne pour observations naturalistes',
+        lang: 'fr',
+        start_url: BASE,
+        scope: BASE,
+        display: 'standalone',
+        orientation: 'portrait',
+        background_color: '#10201a',
+        theme_color: '#1f6f4a',
+        icons: [
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        // L'app elle-même est mise en cache à l'installation (utilisable hors ligne).
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // L'index TAXREF (plusieurs Mo) est mis en cache à la première utilisation :
+        // meta.json est revérifié en ligne, les fichiers de données (nom versionné) ne changent jamais.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.endsWith('/taxref/meta.json'),
+            handler: 'NetworkFirst',
+            options: { cacheName: 'taxref-meta', networkTimeoutSeconds: 4 },
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.includes('/taxref/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'taxref-donnees', expiration: { maxEntries: 12 } },
+          },
+        ],
+      },
+    }),
+  ],
+  worker: { format: 'es' },
+  test: {
+    environment: 'node',
+    include: ['tests/**/*.test.ts'],
+  },
+});
