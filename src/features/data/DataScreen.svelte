@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { db, requestPersistence } from '../../db/db';
   import { loadProjection } from '../../db/projection';
+  import { obsStore } from '../../stores/obs.svelte';
   import { initTaxonIndex, type IndexInfo } from '../../taxonomy/client';
   import { deleteFakeData, generateFakeData } from './fake-data';
 
@@ -28,7 +29,7 @@
     } catch {
       persistant = null;
     }
-    nbObs = await db.observations.count();
+    nbObs = await db.observations.where('deleted').equals(0).count();
     nbPhotos = await db.photos.count();
   }
 
@@ -56,6 +57,7 @@
     progression = '';
     occupe = false;
     await rafraichir();
+    await obsStore.load();
   }
 
   async function supprimer() {
@@ -70,6 +72,7 @@
     }
     occupe = false;
     await rafraichir();
+    await obsStore.load();
   }
 
   async function mesurer() {

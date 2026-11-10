@@ -1,12 +1,17 @@
 <script lang="ts">
-  // Coquille de l'application : en-tête, écran courant, barre de navigation, feuille de saisie.
+  // Coquille de l'application : en-tête, écran courant, barre de navigation, saisie et fiche en plein écran.
   import { onMount } from 'svelte';
   import { requestPersistence } from './db/db';
+  import CaptureSheet from './features/capture/CaptureSheet.svelte';
   import DataScreen from './features/data/DataScreen.svelte';
+  import GalleryScreen from './features/gallery/GalleryScreen.svelte';
+  import ObsDetail from './features/gallery/ObsDetail.svelte';
   import TaxonSearchScreen from './features/species/TaxonSearchScreen.svelte';
+  import { obsStore } from './stores/obs.svelte';
   import BottomNav from './ui/BottomNav.svelte';
   import Placeholder from './ui/Placeholder.svelte';
   import type { Screen } from './ui/screens';
+  import type { Observation } from './domain/types';
 
   type Theme = 'auto' | 'clair' | 'sombre';
   const THEMES: Theme[] = ['auto', 'clair', 'sombre'];
@@ -14,7 +19,10 @@
 
   let screen = $state<Screen>('galerie');
   let saisieOuverte = $state(false);
+  let ficheId = $state<string | null>(null);
   let theme = $state<Theme>('auto');
+  let annonce = $state('');
+  let minuterie: ReturnType<typeof setTimeout> | undefined;
 
   function appliquerTheme(t: Theme) {
     if (t === 'auto') delete document.documentElement.dataset.theme;
@@ -31,6 +39,27 @@
     }
   }
 
+  /** Message bref en bas d'écran. */
+  function annoncer(texte: string) {
+    annonce = texte;
+    clearTimeout(minuterie);
+    minuterie = setTimeout(() => (annonce = ''), 3500);
+  }
+
+  function observationEnregistree(o: Observation) {
+    obsStore.upsert(o);
+    saisieOuverte = false;
+    screen = 'galerie';
+    window.scrollTo({ top: 0 });
+    annoncer(o.lat === undefined ? 'Observation enregistrée, sans position GPS' : 'Observation enregistrée');
+  }
+
+  function observationSupprimee(id: string) {
+    obsStore.remove(id);
+    ficheId = null;
+    annoncer('Observation supprimée');
+  }
+
   onMount(() => {
     try {
       const memorise = localStorage.getItem('theme') as Theme | null;
@@ -41,7 +70,8 @@
     } catch {
       // Stockage indisponible.
     }
-    // Demande au navigateur de conserver les données (sans bloquer l'affichage).
+    // Chargement des observations et demande de stockage persistant, sans bloquer l'affichage.
+    void obsStore.load();
     void requestPersistence();
   });
 </script>
@@ -55,7 +85,7 @@
 
 <main>
   {#if screen === 'galerie'}
-    <Placeholder icon="🖼️" title="Galerie" text="Tes observations apparaîtront ici. La saisie arrive à l'étape suivante." />
+    <GalleryScreen onOpen={(id) => (ficheId = id)} />
   {:else if screen === 'carte'}
     <Placeholder icon="🗺️" title="Carte" text="La carte de toutes tes observations arrivera dans une prochaine étape." />
   {:else if screen === 'especes'}
@@ -68,12 +98,17 @@
 <BottomNav current={screen} onNavigate={(s) => (screen = s)} onAdd={() => (saisieOuverte = true)} />
 
 {#if saisieOuverte}
-  <div class="voile" role="presentation" onclick={() => (saisieOuverte = false)}></div>
-  <div class="feuille" role="dialog" aria-modal="true" aria-label="Nouvelle observation">
-    <h1>Nouvelle observation</h1>
-    <p class="doux">La saisie rapide (taxon, GPS, heure) arrive à l'étape suivante.</p>
-    <button class="bouton" onclick={() => (saisieOuverte = false)}>Fermer</button>
-  </div>
+  <CaptureSheet onClose={() => (saisieOuverte = false)} onSaved={observationEnregistree} />
+{/if}
+
+{#if ficheId}
+  {#key ficheId}
+    <ObsDetail id={ficheId} onClose={() => (ficheId = null)} onDeleted={observationSupprimee} />
+  {/key}
+{/if}
+
+{#if annonce}
+  <div class="annonce" role="status">{annonce}</div>
 {/if}
 
 <style>
@@ -105,23 +140,20 @@
     /* Laisse la place de la barre du bas. */
     padding-bottom: calc(110px + env(safe-area-inset-bottom));
   }
-  .voile {
+  .annonce {
     position: fixed;
-    inset: 0;
-    z-index: 20;
-    background: rgba(0, 0, 0, 0.5);
-  }
-  .feuille {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 21;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
-    border-radius: 20px 20px 0 0;
-    background: var(--surface);
+    left: 16px;
+    right: 16px;
+    bottom: calc(112px + env(safe-area-inset-bottom));
+    z-index: 40;
+    margin: 0 auto;
+    max-width: 480px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    background: var(--texte);
+    color: var(--fond);
+    font-weight: 700;
+    text-align: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   }
 </style>
