@@ -1,0 +1,80 @@
+name: Publication
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compilation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Installer les dependances
+        run: npm install --no-audit --no-fund
+
+      - name: Cache de l'index TAXREF
+        id: taxref-cache
+        uses: actions/cache@v4
+        with:
+          path: public/taxref
+          key: taxref-v1-${{ hashFiles('scripts/build-taxref-index.mjs') }}
+
+      - name: Construire l'index TAXREF (faune)
+        if: steps.taxref-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          mkdir -p .taxref-src
+          curl -fL --retry 3 -A "carnet-nature-build" -o .taxref-src/dwca.zip "https://ipt.gbif.fr/archive.do?r=taxref"
+          unzip -o -q .taxref-src/dwca.zip -d .taxref-src
+          node scripts/build-taxref-index.mjs .taxref-src public/taxref
+
+      - name: Compiler l'app
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Mise en ligne
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  verifications:
+    name: Tests et verification des types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Tests
+        run: npm test
+      - name: Verification des types
+        if: always()
+        run: npm run check
