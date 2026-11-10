@@ -5,6 +5,7 @@
   import { deleteObservation } from '../../db/observations';
   import { GROUPS } from '../../domain/groups';
   import type { Observation, Photo } from '../../domain/types';
+  import GroupIcon from '../../ui/GroupIcon.svelte';
 
   let { id, onClose, onDeleted }: { id: string; onClose: () => void; onDeleted: (id: string) => void } = $props();
 
@@ -74,7 +75,8 @@
 <div class="fiche" role="dialog" aria-modal="true" aria-label="Fiche de l'observation">
   <header class="tete" style="--couleur: {groupe.color}">
     <button class="retour" onclick={onClose} aria-label="Retour">←</button>
-    <span>{groupe.icon} {groupe.label}</span>
+    {#if obs}<GroupIcon group={obs.group} size="1.5rem" />{/if}
+    <span>{groupe.label}</span>
   </header>
 
   <div class="corps">

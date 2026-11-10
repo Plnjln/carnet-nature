@@ -4,6 +4,7 @@
   import { GROUPS, type GroupId } from '../../domain/groups';
   import { obsStore } from '../../stores/obs.svelte';
   import { normalize } from '../../taxonomy/normalize';
+  import GroupIcon from '../../ui/GroupIcon.svelte';
   import GalleryCard from './GalleryCard.svelte';
 
   let { onOpen }: { onOpen: (id: string) => void } = $props();
@@ -62,7 +63,7 @@
       <button class="puce" class:active={groupe === ''} onclick={() => (groupe = '')}>Tout</button>
       {#each groupesPresents as g (g)}
         <button class="puce" class:active={groupe === g} onclick={() => (groupe = groupe === g ? '' : g)}>
-          <span aria-hidden="true">{GROUPS[g].icon}</span>
+          <GroupIcon group={g} size="1.2rem" />
           {GROUPS[g].label}
         </button>
       {/each}

@@ -3,6 +3,7 @@
   import { db } from '../../db/db';
   import { GROUPS } from '../../domain/groups';
   import type { ObsLite } from '../../domain/types';
+  import GroupIcon from '../../ui/GroupIcon.svelte';
 
   let { obs, onOpen }: { obs: ObsLite; onOpen: (id: string) => void } = $props();
 
@@ -34,9 +35,9 @@
     {#if url}
       <img src={url} alt="" loading="lazy" decoding="async" />
     {:else}
-      <span class="grande-icone" aria-hidden="true">{groupe.icon}</span>
+      <span class="grande-icone"><GroupIcon group={obs.group} size="3.4rem" /></span>
     {/if}
-    <span class="pastille" title={groupe.label} aria-hidden="true">{groupe.icon}</span>
+    <span class="pastille" title={groupe.label}><GroupIcon group={obs.group} size="1.1rem" /></span>
     {#if obs.count > 1}<span class="effectif">×{obs.count}</span>{/if}
   </div>
   <div class="texte">
@@ -77,7 +78,7 @@
     object-fit: cover;
   }
   .grande-icone {
-    font-size: 3.2rem;
+    color: #fff;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
   }
   .pastille {
@@ -89,8 +90,8 @@
     display: grid;
     place-items: center;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.9);
-    font-size: 1rem;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--couleur);
   }
   .effectif {
     position: absolute;

@@ -43,29 +43,34 @@ const pick = <T>(liste: T[]): T => liste[alea(liste.length)];
 async function fabriquerMiniatures(): Promise<Map<GroupId, Blob[]>> {
   const parGroupe = new Map<GroupId, Blob[]>();
   const canvas = document.createElement('canvas');
-  canvas.width = 240;
-  canvas.height = 180;
+  // Même taille que les vraies miniatures (400 px), pour un test réaliste et net.
+  canvas.width = 400;
+  canvas.height = 300;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas indisponible');
   for (const id of Object.keys(GROUPS) as GroupId[]) {
     const blobs: Blob[] = [];
     for (let v = 0; v < 3; v++) {
-      const degrade = ctx.createLinearGradient(0, 0, 240, 180);
+      const degrade = ctx.createLinearGradient(0, 0, 400, 300);
       degrade.addColorStop(0, GROUPS[id].color);
       degrade.addColorStop(1, ['#0e1a14', '#3a3a2a', '#1a2a3a'][v]);
       ctx.fillStyle = degrade;
-      ctx.fillRect(0, 0, 240, 180);
-      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.fillRect(0, 0, 400, 300);
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
       for (let k = 0; k < 6; k++) {
         ctx.beginPath();
-        ctx.arc(alea(240), alea(180), 10 + alea(40), 0, Math.PI * 2);
+        ctx.arc(alea(400), alea(300), 16 + alea(60), 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.font = '64px sans-serif';
+      // Texte opaque : « photo factice » et le nom du groupe.
+      ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(GROUPS[id].icon, 120, 95);
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.6));
+      ctx.font = 'bold 34px sans-serif';
+      ctx.fillText(GROUPS[id].label, 200, 140);
+      ctx.font = '22px sans-serif';
+      ctx.fillText('photo factice', 200, 182);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
       if (blob) blobs.push(blob);
     }
     parGroupe.set(id, blobs);
@@ -121,7 +126,7 @@ export async function generateFakeData(
       for (let p = 0; p < n; p++) {
         const photoId = crypto.randomUUID();
         if (p === 0) mainPhotoId = photoId;
-        photos.push({ id: photoId, obsId: id, order: p, width: 240, height: 180, takenAt: date, hasOriginal: 0, createdAt: date, updatedAt: date, deleted: 0 });
+        photos.push({ id: photoId, obsId: id, order: p, width: 400, height: 300, takenAt: date, hasOriginal: 0, createdAt: date, updatedAt: date, deleted: 0 });
         const choix = miniatures.get(t.group) ?? [];
         if (choix.length) thumbs.push({ photoId, blob: pick(choix) });
       }

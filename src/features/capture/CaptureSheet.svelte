@@ -7,6 +7,7 @@
   import type { Certainty, Observation } from '../../domain/types';
   import { watchPosition, type Fix } from '../../geo/position';
   import { initTaxonIndex, searchTaxa } from '../../taxonomy/client';
+  import GroupIcon from '../../ui/GroupIcon.svelte';
 
   let { onClose, onSaved }: { onClose: () => void; onSaved: (o: Observation) => void } = $props();
 
@@ -147,7 +148,7 @@
 
     {#if choisi}
       <p class="choix" style="--couleur: {GROUPS[choisi.group].color}">
-        <span aria-hidden="true">{GROUPS[choisi.group].icon}</span>
+        <span class="teinte"><GroupIcon group={choisi.group} size="1.6rem" /></span>
         <span><strong>{choisi.vern || choisi.sci}</strong> <em>{choisi.sci}</em></span>
       </p>
     {:else if hits.length}
@@ -155,7 +156,7 @@
         {#each hits as h (h.cdNom)}
           <li>
             <button class="proposition" style="--couleur: {GROUPS[h.group].color}" onclick={() => choisir(h)}>
-              <span aria-hidden="true">{GROUPS[h.group].icon}</span>
+              <span class="teinte"><GroupIcon group={h.group} size="1.6rem" /></span>
               <span class="noms"><strong>{h.vern || h.sci}</strong><em>{h.sci}</em></span>
             </button>
           </li>
@@ -168,7 +169,7 @@
       <div class="recents">
         {#each recents as r (r.cdNom)}
           <button class="recent" style="--couleur: {GROUPS[r.group].color}" onclick={() => choisir(r)}>
-            <span aria-hidden="true">{GROUPS[r.group].icon}</span>
+            <span class="teinte"><GroupIcon group={r.group} size="1.3rem" /></span>
             {r.vern || r.sci}
           </button>
         {/each}
@@ -345,6 +346,10 @@
   .noms {
     display: flex;
     flex-direction: column;
+  }
+  .teinte {
+    display: inline-flex;
+    color: var(--couleur);
   }
   .recents,
   .puces {

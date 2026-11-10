@@ -4,6 +4,7 @@
   import { GROUPS } from '../../domain/groups';
   import { initTaxonIndex, searchTaxa, type IndexInfo } from '../../taxonomy/client';
   import type { SearchHit } from '../../taxonomy/search-core';
+  import GroupIcon from '../../ui/GroupIcon.svelte';
 
   const RANGS: Record<string, string> = {
     species: 'espèce',
@@ -96,7 +97,7 @@
   <ul class="liste">
     {#each hits as h (h.cdNom)}
       <li class="carte" style="--couleur: {GROUPS[h.group].color}">
-        <span class="icone" aria-hidden="true">{GROUPS[h.group].icon}</span>
+        <span class="icone"><GroupIcon group={h.group} size="1.8rem" /></span>
         <div class="texte">
           <strong>{h.vern || h.sci}</strong>
           <em>{h.sci}</em>
@@ -142,7 +143,7 @@
     border-left: 8px solid var(--couleur);
   }
   .icone {
-    font-size: 1.8rem;
+    color: var(--couleur);
   }
   .texte {
     display: flex;
