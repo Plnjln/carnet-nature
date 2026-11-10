@@ -20,6 +20,15 @@
     subclass: 'sous-classe',
   };
 
+  /** Lignée complète du taxon : règne, embranchement, classe, ordre, famille, genre. */
+  function lignee(h: SearchHit): string[] {
+    const niveaux = ['Animalia', h.phylum, h.classe, h.order, h.family];
+    // Pour une espèce ou une sous-espèce, le genre est le premier mot du nom scientifique.
+    if (h.rank === 'species' || h.rank === 'subspecies') niveaux.push(h.sci.split(' ')[0]);
+    // On retire les niveaux vides et le taxon lui-même (une famille n'affiche pas son propre nom).
+    return niveaux.filter((n) => n && n !== h.sci);
+  }
+
   let info = $state<IndexInfo | null>(null);
   let erreur = $state('');
   let query = $state('');
@@ -91,10 +100,10 @@
         <div class="texte">
           <strong>{h.vern || h.sci}</strong>
           <em>{h.sci}</em>
-          <small>
-            {RANGS[h.rank] ?? h.rank} · {[h.order, h.family].filter(Boolean).join(' · ')} · cd_nom {h.cdNom}
-            {#if h.matchedKind === 'synonyme'} · synonyme : {h.matched}{/if}
+          <small class="rang">
+            {RANGS[h.rank] ?? h.rank}{#if h.matchedKind === 'synonyme'} · synonyme : {h.matched}{/if}
           </small>
+          <small class="lignee">{lignee(h).join(' › ')}</small>
         </div>
       </li>
     {/each}
@@ -142,5 +151,11 @@
   }
   .texte small {
     color: var(--texte-doux);
+  }
+  .rang {
+    font-weight: 600;
+  }
+  .lignee {
+    overflow-wrap: anywhere;
   }
 </style>
