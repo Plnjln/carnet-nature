@@ -9,6 +9,41 @@
   import { dateFichier, download, loadActiveObservations, toCsv, toDarwinCore, toGeoJson } from './export';
   import { deleteFakeData, generateFakeData } from './fake-data';
 
+  const versionInstallee = new Date(__BUILD_DATE__).toLocaleString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  let messageVersion = $state('');
+  let miseAJourEnCours = $state(false);
+
+  /** Demande au navigateur de chercher une version plus récente, l'installe et recharge la page. */
+  async function mettreAJour() {
+    miseAJourEnCours = true;
+    messageVersion = '';
+    try {
+      const enregistrement = await navigator.serviceWorker?.getRegistration();
+      if (!enregistrement) {
+        location.reload();
+        return;
+      }
+      await enregistrement.update();
+      const nouveau = enregistrement.installing ?? enregistrement.waiting;
+      if (!nouveau) {
+        messageVersion = 'Tu as déjà la dernière version.';
+      } else {
+        messageVersion = 'Nouvelle version trouvée, installation…';
+        await new Promise<void>((resolve) => {
+          if (nouveau.state === 'activated') resolve();
+          nouveau.addEventListener('statechange', () => {
+            if (nouveau.state === 'activated') resolve();
+          });
+          setTimeout(resolve, 20_000);
+        });
+        location.reload();
+      }
+    } catch {
+      messageVersion = 'Vérification impossible (pas de réseau ?).';
+    }
+    miseAJourEnCours = false;
+  }
+
   let derniereSauvegarde = $state<Date | null>(null);
   let messageDonnees = $state('');
   let progressionSauvegarde = $state('');
@@ -205,6 +240,17 @@
   </ul>
   {#if persistant === false}
     <button class="bouton secondaire" onclick={demanderPersistance}>Demander le stockage persistant</button>
+  {/if}
+
+  <h2>Version</h2>
+  <p class="doux">Version installée : {versionInstallee}.</p>
+  <div class="actions">
+    <button class="bouton secondaire" onclick={mettreAJour} disabled={miseAJourEnCours}>
+      {miseAJourEnCours ? 'Vérification…' : 'Mettre à jour maintenant'}
+    </button>
+  </div>
+  {#if messageVersion}
+    <p class="message">{messageVersion}</p>
   {/if}
 
   <h2>Développement</h2>

@@ -1,15 +1,39 @@
 <script lang="ts">
-  // Saisie rapide : un taxon, la position GPS et l'heure. Tout le reste est optionnel.
-  // Parcours le plus court : « + » → tap sur un taxon récent → « Enregistrer ».
+  // Formulaire d'observation, pour la saisie rapide comme pour la modification.
+  // Saisie rapide : un taxon, la position GPS et l'heure suffisent ; tout le reste est dans des
+  // sections dépliables. Parcours le plus court : « + » → tap sur un taxon récent → « Enregistrer ».
   import { onDestroy, onMount } from 'svelte';
-  import { createObservation, getRecentTaxa, toRecent, type RecentTaxon } from '../../db/observations';
-  import { GROUPS } from '../../domain/groups';
+  import {
+    createObservation,
+    detailsFromObservation,
+    emptyDetails,
+    getRecentTaxa,
+    recentFromObservation,
+    toRecent,
+    updateObservation,
+    type ObsDetails,
+    type ObsPosition,
+    type RecentTaxon,
+  } from '../../db/observations';
+  import { GROUPS, type GroupId } from '../../domain/groups';
   import type { Certainty, Observation } from '../../domain/types';
+  import { ATLAS, behavioursFor, contactsFor, HABITATS, SEXES, stagesFor } from '../../domain/vocab';
   import { watchPosition, type Fix } from '../../geo/position';
   import { initTaxonIndex, searchTaxa } from '../../taxonomy/client';
   import GroupIcon from '../../ui/GroupIcon.svelte';
 
-  let { onClose, onSaved }: { onClose: () => void; onSaved: (o: Observation) => void } = $props();
+  let {
+    obs,
+    onClose,
+    onSaved,
+  }: {
+    /** Observation à modifier ; absente pour une nouvelle saisie. */
+    obs?: Observation;
+    onClose: () => void;
+    onSaved: (o: Observation) => void;
+  } = $props();
+
+  const modification = obs !== undefined;
 
   const CERTITUDES: { id: Certainty; label: string }[] = [
     { id: 'certain', label: 'Certain' },
@@ -23,20 +47,29 @@
     return `${d.getFullYear()}-${deuxChiffres(d.getMonth() + 1)}-${deuxChiffres(d.getDate())}T${deuxChiffres(d.getHours())}:${deuxChiffres(d.getMinutes())}`;
   }
 
-  let query = $state('');
+  // --- Taxon ---
+  let query = $state(obs ? obs.taxon?.vernacularName || obs.taxon?.scientificName || obs.taxonInput : '');
   let hits = $state.raw<RecentTaxon[]>([]);
   let recents = $state.raw<RecentTaxon[]>([]);
-  let choisi = $state.raw<RecentTaxon | null>(null);
+  let choisi = $state.raw<RecentTaxon | null>(obs ? recentFromObservation(obs) : null);
   let indexPret = $state(false);
+  const groupe = $derived<GroupId>(choisi?.group ?? 'autres');
 
+  // --- Position ---
   let fix = $state.raw<Fix | null>(null);
   let gpsMessage = $state('Recherche de la position…');
+  // Coordonnées tapées à la main (prioritaires sur le GPS quand elles sont remplies).
+  let latTexte = $state(obs?.lat !== undefined ? String(obs.lat) : '');
+  let lonTexte = $state(obs?.lon !== undefined ? String(obs.lon) : '');
 
-  let dateChamp = $state(pourChamp(new Date()));
+  // --- Reste du formulaire ---
+  let dateChamp = $state(pourChamp(obs ? new Date(obs.startAt) : new Date()));
   let dateModifiee = $state(false);
-  let effectif = $state(1);
-  let certitude = $state<Certainty>('certain');
-  let notes = $state('');
+  let effectif = $state<number | null>(obs?.count?.value ?? 1);
+  let certitude = $state<Certainty>(obs?.certainty ?? 'certain');
+  let notes = $state(obs?.notes ?? '');
+  let details = $state<ObsDetails>(obs ? detailsFromObservation(obs) : emptyDetails());
+  let etiquettes = $state(obs ? obs.tags.join(', ') : '');
   let photos = $state.raw<{ fichier: File; url: string }[]>([]);
 
   let enregistrement = $state(false);
@@ -46,22 +79,24 @@
   let arreterGps = () => {};
 
   onMount(async () => {
-    arreterGps = watchPosition(
-      (f) => {
-        // On garde le relevé le plus précis.
-        if (!fix || f.accuracyM <= fix.accuracyM) fix = f;
-        gpsMessage = '';
-      },
-      (m) => {
-        if (!fix) gpsMessage = m;
-      },
-    );
+    if (!modification) {
+      arreterGps = watchPosition(
+        (f) => {
+          // On garde le relevé le plus précis.
+          if (!fix || f.accuracyM <= fix.accuracyM) fix = f;
+          gpsMessage = '';
+        },
+        (m) => {
+          if (!fix) gpsMessage = m;
+        },
+      );
+    }
     initTaxonIndex()
       .then(() => (indexPret = true))
       .catch(() => (indexPret = false));
     recents = await getRecentTaxa();
     // Sans taxon récent à proposer, on ouvre directement le clavier.
-    if (recents.length === 0) champTaxon?.focus();
+    if (!modification && recents.length === 0) champTaxon?.focus();
   });
 
   onDestroy(() => {
@@ -91,6 +126,11 @@
     dernier++;
   }
 
+  /** Ajoute ou retire une valeur d'une liste à choix multiples. */
+  function basculer<T>(liste: T[], valeur: T): T[] {
+    return liste.includes(valeur) ? liste.filter((v) => v !== valeur) : [...liste, valeur];
+  }
+
   function ajouterPhotos(e: Event) {
     const champ = e.currentTarget as HTMLInputElement;
     const nouvelles = Array.from(champ.files ?? []).map((fichier) => ({ fichier, url: URL.createObjectURL(fichier) }));
@@ -103,23 +143,46 @@
     photos = photos.filter((p) => p.url !== url);
   }
 
+  /** Position à enregistrer : coordonnées tapées, sinon position d'origine (modification) ou GPS. */
+  function positionFinale(): ObsPosition | undefined {
+    const lat = latTexte.trim();
+    const lon = lonTexte.trim();
+    if (lat || lon) {
+      const la = Number(lat.replace(',', '.'));
+      const lo = Number(lon.replace(',', '.'));
+      if (!lat || !lon || !Number.isFinite(la) || !Number.isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) {
+        throw new Error('Coordonnées invalides : latitude entre -90 et 90, longitude entre -180 et 180.');
+      }
+      // Coordonnées d'origine inchangées : on garde aussi leur précision et leur altitude.
+      if (obs && obs.lat === la && obs.lon === lo) {
+        return { lat: la, lon: lo, accuracyM: obs.accuracyM, altitudeM: obs.altitudeM, source: obs.locationSource ?? 'manuel' };
+      }
+      return { lat: la, lon: lo, source: 'manuel' };
+    }
+    if (fix) return { lat: fix.lat, lon: fix.lon, accuracyM: fix.accuracyM, altitudeM: fix.altitudeM, source: 'gps' };
+    return undefined;
+  }
+
   async function enregistrer() {
     if (!query.trim() || enregistrement) return;
     enregistrement = true;
     erreur = '';
     try {
-      const obs = await createObservation({
+      details.tags = etiquettes.split(',').map((e) => e.trim()).filter(Boolean);
+      const saisie = {
         taxonInput: query,
         taxon: choisi ?? undefined,
-        // Si la date n'a pas été touchée, on prend l'instant exact de l'enregistrement.
-        startAt: dateModifiee ? new Date(dateChamp) : new Date(),
-        fix: fix ?? undefined,
+        // Nouvelle saisie dont la date n'a pas été touchée : on prend l'instant exact de l'enregistrement.
+        startAt: modification || dateModifiee ? new Date(dateChamp) : new Date(),
+        position: positionFinale(),
         count: effectif,
         certainty: certitude,
         notes,
-        photos: photos.map((p) => p.fichier),
-      });
-      onSaved(obs);
+        details,
+        newPhotos: photos.map((p) => p.fichier),
+      };
+      if (Number.isNaN(saisie.startAt.getTime())) throw new Error('Date invalide.');
+      onSaved(obs ? await updateObservation(obs.id, saisie) : await createObservation(saisie));
     } catch (e) {
       erreur = e instanceof Error ? e.message : String(e);
       enregistrement = false;
@@ -127,9 +190,9 @@
   }
 </script>
 
-<div class="feuille" role="dialog" aria-modal="true" aria-label="Nouvelle observation">
+<div class="feuille" role="dialog" aria-modal="true" aria-label={modification ? "Modifier l'observation" : 'Nouvelle observation'}>
   <header class="tete">
-    <h1>Nouvelle observation</h1>
+    <h1>{modification ? "Modifier l'observation" : 'Nouvelle observation'}</h1>
     <button class="fermer" onclick={onClose} aria-label="Fermer">✕</button>
   </header>
 
@@ -166,9 +229,9 @@
       <p class="doux">Aucune proposition : le nom sera enregistré tel quel et rapproché plus tard.</p>
     {:else if recents.length}
       <p class="doux">Derniers taxons</p>
-      <div class="recents">
+      <div class="puces">
         {#each recents as r (r.cdNom)}
-          <button class="recent" style="--couleur: {GROUPS[r.group].color}" onclick={() => choisir(r)}>
+          <button class="puce recent" style="--couleur: {GROUPS[r.group].color}" onclick={() => choisir(r)}>
             <span class="teinte"><GroupIcon group={r.group} size="1.3rem" /></span>
             {r.vern || r.sci}
           </button>
@@ -176,32 +239,31 @@
       </div>
     {/if}
 
-    <p class="gps" class:alerte={!fix && gpsMessage !== 'Recherche de la position…'}>
-      📍
-      {#if fix}
-        {fix.lat.toFixed(5)}, {fix.lon.toFixed(5)} · ± {fix.accuracyM} m{fix.altitudeM !== undefined ? ` · ${fix.altitudeM} m d'altitude` : ''}
-      {:else}
-        {gpsMessage}
-      {/if}
-    </p>
+    {#if !modification}
+      <p class="gps" class:alerte={!fix && gpsMessage !== 'Recherche de la position…'}>
+        📍
+        {#if fix}
+          {fix.lat.toFixed(5)}, {fix.lon.toFixed(5)} · ± {fix.accuracyM} m{fix.altitudeM !== undefined ? ` · ${fix.altitudeM} m d'altitude` : ''}
+        {:else}
+          {gpsMessage}
+        {/if}
+      </p>
+    {/if}
 
     <details>
-      <summary>Date, effectif, certitude, photos, remarques</summary>
-
+      <summary>Date, effectif, certitude</summary>
       <label class="ligne">
         <span>Date et heure</span>
         <input class="champ" type="datetime-local" bind:value={dateChamp} oninput={() => (dateModifiee = true)} />
       </label>
-
       <div class="ligne">
         <span>Effectif</span>
         <div class="compteur">
-          <button class="rond" onclick={() => (effectif = Math.max(1, effectif - 1))} aria-label="Moins un">−</button>
+          <button class="rond" onclick={() => (effectif = Math.max(1, (effectif ?? 1) - 1))} aria-label="Moins un">−</button>
           <input class="champ nombre" type="number" min="1" inputmode="numeric" bind:value={effectif} />
-          <button class="rond" onclick={() => (effectif += 1)} aria-label="Plus un">+</button>
+          <button class="rond" onclick={() => (effectif = (effectif ?? 0) + 1)} aria-label="Plus un">+</button>
         </div>
       </div>
-
       <div class="ligne">
         <span>Certitude</span>
         <div class="puces">
@@ -210,9 +272,101 @@
           {/each}
         </div>
       </div>
+    </details>
 
+    <details>
+      <summary>Sexe et stade</summary>
       <div class="ligne">
-        <span>Photos</span>
+        <span>Sexe</span>
+        <div class="puces">
+          {#each SEXES as s (s.id)}
+            <button class="puce" class:active={details.sex === s.id} onclick={() => (details.sex = details.sex === s.id ? undefined : s.id)}>{s.label}</button>
+          {/each}
+        </div>
+      </div>
+      <div class="ligne">
+        <span>Stade</span>
+        <div class="puces">
+          {#each stagesFor(groupe) as s (s.id)}
+            <button class="puce" class:active={details.stage === s.id} onclick={() => (details.stage = details.stage === s.id ? undefined : s.id)}>{s.label}</button>
+          {/each}
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Contact et comportement</summary>
+      <div class="ligne">
+        <span>Type de contact</span>
+        <div class="puces">
+          {#each contactsFor(groupe) as c (c.id)}
+            <button class="puce" class:active={details.contacts.includes(c.id)} onclick={() => (details.contacts = basculer(details.contacts, c.id))}>{c.label}</button>
+          {/each}
+        </div>
+      </div>
+      <div class="ligne">
+        <span>Comportement</span>
+        <div class="puces">
+          {#each behavioursFor(groupe) as c (c.id)}
+            <button class="puce" class:active={details.behaviours.includes(c.id)} onclick={() => (details.behaviours = basculer(details.behaviours, c.id))}>{c.label}</button>
+          {/each}
+        </div>
+        <input class="champ" type="text" placeholder="Précision (ex. plante butinée)" bind:value={details.behaviourNote} />
+      </div>
+      {#if groupe === 'oiseaux'}
+        <div class="ligne">
+          <span>Code atlas de nidification</span>
+          <div class="puces">
+            {#each ATLAS as a (a.id)}
+              <button class="puce" class:active={details.atlasCode === a.id} onclick={() => (details.atlasCode = details.atlasCode === a.id ? undefined : a.id)}>{a.label}</button>
+            {/each}
+          </div>
+        </div>
+      {/if}
+    </details>
+
+    <details>
+      <summary>Milieu</summary>
+      {#each HABITATS as famille (famille.label)}
+        <div class="ligne">
+          <span>{famille.label}</span>
+          <div class="puces">
+            {#each famille.choix as h (h.id)}
+              <button class="puce" class:active={details.habitats.includes(h.id)} onclick={() => (details.habitats = basculer(details.habitats, h.id))}>{h.label}</button>
+            {/each}
+          </div>
+        </div>
+      {/each}
+      <label class="ligne">
+        <span>Support ou plante hôte</span>
+        <input class="champ" type="text" bind:value={details.substrate} />
+      </label>
+    </details>
+
+    <details>
+      <summary>Lieu</summary>
+      <label class="ligne">
+        <span>Lieu-dit</span>
+        <input class="champ" type="text" placeholder="Rempli automatiquement si laissé vide" bind:value={details.placeName} />
+      </label>
+      <label class="ligne">
+        <span>Commune</span>
+        <input class="champ" type="text" placeholder="Remplie automatiquement si laissée vide" bind:value={details.commune} />
+      </label>
+      <div class="ligne">
+        <span>Coordonnées (latitude, longitude)</span>
+        <div class="coordonnees">
+          <input class="champ" type="text" inputmode="decimal" placeholder={fix ? fix.lat.toFixed(5) : 'Latitude'} aria-label="Latitude" bind:value={latTexte} />
+          <input class="champ" type="text" inputmode="decimal" placeholder={fix ? fix.lon.toFixed(5) : 'Longitude'} aria-label="Longitude" bind:value={lonTexte} />
+        </div>
+        {#if !modification}<small class="doux">Laisse vide pour utiliser le GPS.</small>{/if}
+      </div>
+    </details>
+
+    <details>
+      <summary>Photos, remarques, étiquettes</summary>
+      <div class="ligne">
+        <span>{modification ? 'Ajouter des photos' : 'Photos'}</span>
         <div class="puces">
           <label class="puce">
             📷 Appareil photo
@@ -234,10 +388,13 @@
           </div>
         {/if}
       </div>
-
       <label class="ligne">
         <span>Remarques</span>
         <textarea class="champ zone" rows="2" bind:value={notes}></textarea>
+      </label>
+      <label class="ligne">
+        <span>Étiquettes (séparées par des virgules)</span>
+        <input class="champ" type="text" autocapitalize="off" bind:value={etiquettes} />
       </label>
     </details>
 
@@ -257,7 +414,7 @@
   .feuille {
     position: fixed;
     inset: 0;
-    z-index: 30;
+    z-index: 35;
     display: flex;
     flex-direction: column;
     background: var(--fond);
@@ -311,6 +468,9 @@
     background: var(--surface);
     color: var(--texte);
   }
+  details .champ {
+    background: var(--fond);
+  }
   .champ:focus {
     outline: 3px solid var(--accent);
     border-color: var(--accent);
@@ -351,13 +511,11 @@
     display: inline-flex;
     color: var(--couleur);
   }
-  .recents,
   .puces {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
   }
-  .recent,
   .puce {
     display: inline-flex;
     align-items: center;
@@ -370,7 +528,10 @@
     color: var(--texte);
     font-weight: 600;
   }
-  .recent {
+  details .puce {
+    background: var(--fond);
+  }
+  .puce.recent {
     border-color: var(--couleur);
   }
   .puce.active {
@@ -415,6 +576,11 @@
   .nombre {
     width: 110px;
     text-align: center;
+  }
+  .coordonnees {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
   .rond {
     width: 56px;

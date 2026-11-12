@@ -7,6 +7,8 @@ const BASE = '/carnet-nature/';
 
 export default defineConfig({
   base: BASE,
+  // Date de compilation, affichée dans l'onglet Données pour savoir quelle version est installée.
+  define: { __BUILD_DATE__: JSON.stringify(new Date().toISOString()) },
   plugins: [
     svelte(),
     VitePWA({

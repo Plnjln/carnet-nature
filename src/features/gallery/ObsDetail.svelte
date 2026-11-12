@@ -5,9 +5,30 @@
   import { deleteObservation } from '../../db/observations';
   import { GROUPS } from '../../domain/groups';
   import type { Observation, Photo } from '../../domain/types';
+  import { labelOf } from '../../domain/vocab';
   import GroupIcon from '../../ui/GroupIcon.svelte';
 
-  let { id, onClose, onDeleted }: { id: string; onClose: () => void; onDeleted: (id: string) => void } = $props();
+  let {
+    id,
+    onClose,
+    onDeleted,
+    onEdit,
+  }: { id: string; onClose: () => void; onDeleted: (id: string) => void; onEdit: (o: Observation) => void } = $props();
+
+  /** « 12 °C · vent 7 km/h · nuages 65 % · pluie 0,2 mm » */
+  function meteo(o: Observation): string {
+    const w = o.weather;
+    if (!w) return '';
+    const nombre = (v: number) => v.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+    return [
+      w.temperatureC !== undefined ? `${nombre(w.temperatureC)} °C` : '',
+      w.windKmh !== undefined ? `vent ${nombre(w.windKmh)} km/h` : '',
+      w.cloudCoverPct !== undefined ? `nuages ${nombre(w.cloudCoverPct)} %` : '',
+      w.precipitationMm !== undefined ? `pluie ${nombre(w.precipitationMm)} mm` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  }
 
   const CERTITUDES = { certain: 'Certain', probable: 'Probable', 'a-confirmer': 'À confirmer' } as const;
 
@@ -109,7 +130,7 @@
 
           <dt>Lieu</dt>
           <dd>
-            {#if obs.placeName || obs.commune}{[obs.placeName, obs.commune].filter(Boolean).join(', ')}<br />{/if}
+            {#if obs.placeName || obs.commune || obs.departement}{[obs.placeName, obs.commune, obs.departement].filter(Boolean).join(', ')}<br />{/if}
             {#if obs.lat !== undefined && obs.lon !== undefined}
               {obs.lat.toFixed(5)}, {obs.lon.toFixed(5)}
               {#if obs.accuracyM !== undefined} · ± {obs.accuracyM} m{/if}
@@ -125,13 +146,49 @@
           <dt>Certitude</dt>
           <dd>{CERTITUDES[obs.certainty]}</dd>
 
+          {#if obs.sex || obs.stage}
+            <dt>Individus</dt>
+            <dd>{[obs.sex, obs.stage].flatMap((v) => (v ? [labelOf(v)] : [])).join(' · ')}</dd>
+          {/if}
+
+          <dt>Contact</dt>
+          <dd>{obs.contacts.map(labelOf).join(', ')}</dd>
+
+          {#if obs.behaviours?.length || obs.behaviourNote}
+            <dt>Comportement</dt>
+            <dd>{[...(obs.behaviours ?? []).map(labelOf), obs.behaviourNote].filter(Boolean).join(', ')}</dd>
+          {/if}
+
+          {#if obs.atlasCode}
+            <dt>Code atlas</dt>
+            <dd>{labelOf(obs.atlasCode)}</dd>
+          {/if}
+
+          {#if obs.habitats?.length || obs.substrate}
+            <dt>Milieu</dt>
+            <dd>{[...(obs.habitats ?? []).map(labelOf), obs.substrate].filter(Boolean).join(', ')}</dd>
+          {/if}
+
+          {#if obs.weather}
+            <dt>Météo</dt>
+            <dd>{meteo(obs)}</dd>
+          {/if}
+
           {#if obs.notes}
             <dt>Remarques</dt>
             <dd>{obs.notes}</dd>
           {/if}
+
+          {#if obs.tags.length}
+            <dt>Étiquettes</dt>
+            <dd>{obs.tags.join(', ')}</dd>
+          {/if}
         </dl>
 
-        <button class="bouton danger" onclick={supprimer}>Supprimer l'observation</button>
+        <div class="actions">
+          <button class="bouton" onclick={() => obs && onEdit(obs)}>Modifier</button>
+          <button class="bouton danger" onclick={supprimer}>Supprimer l'observation</button>
+        </div>
       </div>
     {/if}
   </div>
@@ -221,6 +278,10 @@
     padding: 16px;
     border-radius: 14px;
     background: var(--surface);
+  }
+  .actions {
+    display: grid;
+    gap: 10px;
   }
   dt {
     color: var(--texte-doux);
