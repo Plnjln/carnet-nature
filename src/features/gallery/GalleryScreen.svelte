@@ -59,6 +59,13 @@
     </div>
   {/if}
 
+  {#if filters.taxonKey}
+    <p class="filtre-taxon">
+      Uniquement : <strong>{filters.taxonLabel}</strong>
+      <button class="lien" onclick={() => filters.retirerTaxon()}>tout afficher</button>
+    </p>
+  {/if}
+
   {#if !obsStore.loaded}
     <p class="doux">Chargement…</p>
   {:else if obsStore.rows.length === 0}
@@ -129,6 +136,21 @@
   }
   .doux {
     margin: 10px 0;
+  }
+  .filtre-taxon {
+    margin: 10px 0 0;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  .lien {
+    margin-left: 8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font-weight: 700;
+    text-decoration: underline;
   }
   .zone {
     position: relative;

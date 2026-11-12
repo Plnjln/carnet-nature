@@ -4,7 +4,7 @@ import { parseIndex, TaxonSearcher } from './search-core';
 
 interface Requete {
   id: number;
-  type: 'init' | 'search' | 'sample';
+  type: 'init' | 'search' | 'sample' | 'congeners';
   baseUrl?: string;
   query?: string;
   limit?: number;
@@ -74,6 +74,8 @@ ctx.onmessage = async (ev) => {
       const debut = performance.now();
       const hits = searcher.search(m.query ?? '', m.limit ?? 12);
       result = { hits, ms: Math.round((performance.now() - debut) * 10) / 10 };
+    } else if (m.type === 'congeners') {
+      result = searcher.congeners(m.query ?? '');
     } else {
       result = searcher.sample(m.n ?? 100);
     }

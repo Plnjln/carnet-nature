@@ -7,11 +7,15 @@ import { obsStore } from './obs.svelte';
 
 let recherche = $state('');
 let groupe = $state<GroupId | ''>('');
+// Filtre sur un taxon précis (posé depuis la fiche espèce) : clé « source:identifiant » et nom affiché.
+let taxonKey = $state('');
+let taxonLabel = $state('');
 
 const filtrees = $derived.by<ObsLite[]>(() => {
   const mots = normalize(recherche).split(' ').filter(Boolean);
-  if (!groupe && mots.length === 0) return obsStore.rows;
+  if (!groupe && !taxonKey && mots.length === 0) return obsStore.rows;
   return obsStore.rows.filter((o) => {
+    if (taxonKey && o.taxonKey !== taxonKey) return false;
     if (groupe && o.group !== groupe) return false;
     if (mots.length === 0) return true;
     const texte = normalize(`${o.vern} ${o.sci} ${o.family} ${o.order} ${o.place}`);
@@ -34,9 +38,28 @@ export const filters = {
   set groupe(v: GroupId | '') {
     groupe = v;
   },
+  /** Taxon retenu (clé), ou chaîne vide. */
+  get taxonKey() {
+    return taxonKey;
+  },
+  /** Nom du taxon retenu, pour l'affichage. */
+  get taxonLabel() {
+    return taxonLabel;
+  },
+  /** Ne garde que les observations d'un taxon (les autres filtres sont remis à zéro). */
+  seulementTaxon(key: string, label: string) {
+    recherche = '';
+    groupe = '';
+    taxonKey = key;
+    taxonLabel = label;
+  },
+  retirerTaxon() {
+    taxonKey = '';
+    taxonLabel = '';
+  },
   /** Vrai si au moins un filtre est actif. */
   get actifs() {
-    return groupe !== '' || recherche.trim() !== '';
+    return groupe !== '' || taxonKey !== '' || recherche.trim() !== '';
   },
   /** Observations qui passent les filtres. */
   get rows() {
@@ -45,5 +68,7 @@ export const filters = {
   effacer() {
     recherche = '';
     groupe = '';
+    taxonKey = '';
+    taxonLabel = '';
   },
 };

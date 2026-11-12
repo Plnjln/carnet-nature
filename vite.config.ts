@@ -40,6 +40,16 @@ export default defineConfig({
         // La carte (MapLibre) dépasse la limite par défaut de 2 Mo : on l'inclut quand même dans le cache hors ligne.
         maximumFileSizeToCacheInBytes: 4_000_000,
         runtimeCaching: [
+          // Photos de référence (iNaturalist) déjà affichées : gardées pour un usage hors ligne.
+          {
+            urlPattern: ({ url }) => ['inaturalist-open-data.s3.amazonaws.com', 'static.inaturalist.org'].includes(url.hostname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'photos-reference',
+              expiration: { maxEntries: 3000, maxAgeSeconds: 180 * 24 * 3600 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           // Tuiles de carte déjà consultées : gardées pour un usage hors ligne (2 mois, 4 000 tuiles au plus).
           {
             urlPattern: ({ url }) => ['tile.openstreetmap.org', 'data.geopf.fr', 'demotiles.maplibre.org'].includes(url.hostname),

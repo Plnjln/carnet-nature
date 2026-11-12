@@ -14,6 +14,13 @@ import type {
   Track,
 } from '../domain/types';
 
+/** Information de référence mise en cache (clé « photo:<nom> » ou « texte:<nom> ») ; `data` vaut null si rien n'a été trouvé. */
+export interface RefInfo {
+  key: string;
+  fetchedAt: number;
+  data: unknown;
+}
+
 export class CarnetDB extends Dexie {
   observations!: Table<Observation, string>;
   photos!: Table<Photo, string>;
@@ -26,6 +33,7 @@ export class CarnetDB extends Dexie {
   taxonCache!: Table<TaxonCacheEntry, string>;
   enrichQueue!: Table<EnrichTask, string>;
   settings!: Table<Setting, string>;
+  refInfo!: Table<RefInfo, string>;
 
   constructor() {
     super('carnet-nature');
@@ -44,6 +52,10 @@ export class CarnetDB extends Dexie {
       taxonCache: 'key, source, fetchedAt',
       enrichQueue: 'id, kind, obsId, nextTryAt',
       settings: 'key',
+    });
+    // Version 2 : cache des photos et textes de référence (iNaturalist, Wikipédia).
+    this.version(2).stores({
+      refInfo: 'key',
     });
   }
 }

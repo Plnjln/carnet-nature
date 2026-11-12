@@ -328,6 +328,20 @@ export class TaxonSearcher {
     };
   }
 
+  /** Autres espèces du même genre (pour comparer des espèces proches), par ordre alphabétique. */
+  congeners(sci: string, limit = 60): SearchHit[] {
+    const genre = sci.split(' ')[0];
+    if (!genre) return [];
+    const prefixe = `${genre} `;
+    const out: SearchHit[] = [];
+    for (let i = 0; i < this.data.taxa.length; i++) {
+      const t = this.data.taxa[i];
+      if (t.rank === 'species' && t.sci !== sci && t.sci.startsWith(prefixe)) out.push(this.toHit(i, 0, 0));
+    }
+    out.sort((a, b) => a.sci.localeCompare(b.sci));
+    return out.slice(0, limit);
+  }
+
   /** Tire `n` espèces au hasard (pour les données factices). */
   sample(n: number): SearchHit[] {
     const out: SearchHit[] = [];

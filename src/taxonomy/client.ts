@@ -50,6 +50,12 @@ export function searchTaxa(query: string, limit = 12): Promise<{ hits: SearchHit
   return appeler({ type: 'search', query, limit });
 }
 
+/** Autres espèces du même genre que `sci` (l'index doit être chargé). */
+export async function congenersOf(sci: string): Promise<SearchHit[]> {
+  await initTaxonIndex();
+  return appeler({ type: 'congeners', query: sci });
+}
+
 export function sampleTaxa(n: number): Promise<SearchHit[]> {
   return appeler({ type: 'sample', n });
 }

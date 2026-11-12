@@ -8,7 +8,13 @@
   import DataScreen from './features/data/DataScreen.svelte';
   import GalleryScreen from './features/gallery/GalleryScreen.svelte';
   import ObsDetail from './features/gallery/ObsDetail.svelte';
-  import TaxonSearchScreen from './features/species/TaxonSearchScreen.svelte';
+  import KeyRunner from './features/keys/KeyRunner.svelte';
+  import KeysScreen from './features/keys/KeysScreen.svelte';
+  import type { IdKey } from './keys/types';
+  import type { SpeciesSummary } from './features/species/species';
+  import SpeciesDetail from './features/species/SpeciesDetail.svelte';
+  import SpeciesScreen from './features/species/SpeciesScreen.svelte';
+  import { filters } from './stores/filters.svelte';
   import { obsStore } from './stores/obs.svelte';
   import BottomNav from './ui/BottomNav.svelte';
   import Placeholder from './ui/Placeholder.svelte';
@@ -26,6 +32,18 @@
   let ficheVersion = $state(0);
   let aModifier = $state.raw<Observation | null>(null);
   let positionSaisie = $state.raw<{ lat: number; lon: number } | undefined>(undefined);
+  let espece = $state.raw<SpeciesSummary | null>(null);
+  let cleOuverte = $state.raw<IdKey | null>(null);
+  let cheminAnnuaire = $state.raw<string[]>([]);
+
+  /** Depuis la fiche espèce : n'afficher que ce taxon, sur la carte ou dans la galerie. */
+  function montrerEspece(ecran: Screen) {
+    if (!espece) return;
+    filters.seulementTaxon(espece.key, espece.vern || espece.sci);
+    espece = null;
+    screen = ecran;
+    window.scrollTo({ top: 0 });
+  }
   let theme = $state<Theme>('auto');
   let annonce = $state('');
   let minuterie: ReturnType<typeof setTimeout> | undefined;
@@ -57,8 +75,8 @@
     if (obsStore.rows.length === 0) return;
     const DEUX_SEMAINES = 14 * 24 * 3600 * 1000;
     const derniere = await lastBackupAt();
-    if (!derniere) annoncer('Aucune sauvegarde pour l\'instant : onglet Données → Sauvegarder tout.', 8000);
-    else if (Date.now() - derniere.getTime() > DEUX_SEMAINES) annoncer('Dernière sauvegarde il y a plus de deux semaines : onglet Données → Sauvegarder tout.', 8000);
+    if (!derniere) annoncer('Aucune sauvegarde pour l\'instant : bouton 💾 en haut → Sauvegarder tout.', 8000);
+    else if (Date.now() - derniere.getTime() > DEUX_SEMAINES) annoncer('Dernière sauvegarde il y a plus de deux semaines : bouton 💾 en haut → Sauvegarder tout.', 8000);
   }
 
   /** Complète en arrière-plan le lieu, l'altitude et la météo des observations en attente. */
@@ -129,9 +147,12 @@
 
 <header class="entete">
   <span class="titre">Carnet Nature</span>
-  <button class="theme" onclick={changerTheme} aria-label="Thème : {theme}. Changer de thème">
-    {ICONES_THEME[theme]}
-  </button>
+  <span class="boutons">
+    <button class="theme" class:actif={screen === 'donnees'} onclick={() => (screen = 'donnees')} aria-label="Données, sauvegarde et réglages">💾</button>
+    <button class="theme" onclick={changerTheme} aria-label="Thème : {theme}. Changer de thème">
+      {ICONES_THEME[theme]}
+    </button>
+  </span>
 </header>
 
 <main>
@@ -148,7 +169,9 @@
       <Placeholder icon="🗺️" title="Carte indisponible" text="La carte n'a pas pu être chargée. Vérifie la connexion puis réessaie." />
     {/await}
   {:else if screen === 'especes'}
-    <TaxonSearchScreen />
+    <SpeciesScreen onOpenSpecies={(e) => (espece = e)} />
+  {:else if screen === 'cles'}
+    <KeysScreen chemin={cheminAnnuaire} onNavigate={(c) => (cheminAnnuaire = c)} onOpenKey={(c) => (cleOuverte = c)} />
   {:else}
     <DataScreen />
   {/if}
@@ -158,6 +181,31 @@
 
 {#if saisieOuverte}
   <CaptureSheet position={positionSaisie} onClose={fermerSaisie} onSaved={observationEnregistree} />
+{/if}
+
+{#if cleOuverte}
+  {#key cleOuverte.id}
+    <KeyRunner
+      cle={cleOuverte}
+      onClose={() => (cleOuverte = null)}
+      onOpenKey={(c) => (cleOuverte = c)}
+      onOpenDirectory={(chemin) => {
+        cheminAnnuaire = chemin;
+        cleOuverte = null;
+        screen = 'cles';
+      }}
+    />
+  {/key}
+{/if}
+
+{#if espece}
+  <SpeciesDetail
+    {espece}
+    onClose={() => (espece = null)}
+    onOpenObs={(id) => (ficheId = id)}
+    onShowMap={() => montrerEspece('carte')}
+    onShowGallery={() => montrerEspece('galerie')}
+  />
 {/if}
 
 {#if ficheId}
@@ -190,6 +238,13 @@
   .titre {
     font-size: 1.2rem;
     font-weight: 800;
+  }
+  .boutons {
+    display: flex;
+    gap: 2px;
+  }
+  .theme.actif {
+    background: rgba(255, 255, 255, 0.25);
   }
   .theme {
     width: 48px;
