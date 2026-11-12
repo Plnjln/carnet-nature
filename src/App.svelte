@@ -25,6 +25,7 @@
   // Augmente à chaque changement de l'observation affichée, pour recharger la fiche.
   let ficheVersion = $state(0);
   let aModifier = $state.raw<Observation | null>(null);
+  let positionSaisie = $state.raw<{ lat: number; lon: number } | undefined>(undefined);
   let theme = $state<Theme>('auto');
   let annonce = $state('');
   let minuterie: ReturnType<typeof setTimeout> | undefined;
@@ -69,11 +70,25 @@
     });
   }
 
+  /** Appui long sur la carte : nouvelle observation à cet endroit. */
+  function creerIci(lat: number, lon: number) {
+    positionSaisie = { lat, lon };
+    saisieOuverte = true;
+  }
+
+  function fermerSaisie() {
+    saisieOuverte = false;
+    positionSaisie = undefined;
+  }
+
   function observationEnregistree(o: Observation) {
     obsStore.upsert(o);
-    saisieOuverte = false;
-    screen = 'galerie';
-    window.scrollTo({ top: 0 });
+    // Saisie lancée depuis la carte : on y reste ; sinon retour à la galerie.
+    if (!positionSaisie) {
+      screen = 'galerie';
+      window.scrollTo({ top: 0 });
+    }
+    fermerSaisie();
     annoncer(o.lat === undefined ? 'Observation enregistrée, sans position GPS' : 'Observation enregistrée');
     void queueEnrichment(o).then(enrichir);
   }
@@ -123,7 +138,15 @@
   {#if screen === 'galerie'}
     <GalleryScreen onOpen={(id) => (ficheId = id)} />
   {:else if screen === 'carte'}
-    <Placeholder icon="🗺️" title="Carte" text="La carte de toutes tes observations arrivera dans une prochaine étape." />
+    <!-- La carte est chargée à la demande, pour ne pas ralentir le démarrage. -->
+    {#await import('./features/map/MapScreen.svelte')}
+      <p class="page doux">Chargement de la carte…</p>
+    {:then module}
+      {@const MapScreen = module.default}
+      <MapScreen onOpen={(id) => (ficheId = id)} onCreateAt={creerIci} />
+    {:catch}
+      <Placeholder icon="🗺️" title="Carte indisponible" text="La carte n'a pas pu être chargée. Vérifie la connexion puis réessaie." />
+    {/await}
   {:else if screen === 'especes'}
     <TaxonSearchScreen />
   {:else}
@@ -134,7 +157,7 @@
 <BottomNav current={screen} onNavigate={(s) => (screen = s)} onAdd={() => (saisieOuverte = true)} />
 
 {#if saisieOuverte}
-  <CaptureSheet onClose={() => (saisieOuverte = false)} onSaved={observationEnregistree} />
+  <CaptureSheet position={positionSaisie} onClose={fermerSaisie} onSaved={observationEnregistree} />
 {/if}
 
 {#if ficheId}

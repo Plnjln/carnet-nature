@@ -19,16 +19,20 @@
   import type { Certainty, Observation } from '../../domain/types';
   import { ATLAS, behavioursFor, contactsFor, HABITATS, SEXES, stagesFor } from '../../domain/vocab';
   import { watchPosition, type Fix } from '../../geo/position';
+  import { readPhotoInfo } from '../../media/exif';
   import { initTaxonIndex, searchTaxa } from '../../taxonomy/client';
   import GroupIcon from '../../ui/GroupIcon.svelte';
 
   let {
     obs,
+    position,
     onClose,
     onSaved,
   }: {
     /** Observation à modifier ; absente pour une nouvelle saisie. */
     obs?: Observation;
+    /** Point choisi sur la carte (appui long), pour une nouvelle saisie. */
+    position?: { lat: number; lon: number };
     onClose: () => void;
     onSaved: (o: Observation) => void;
   } = $props();
@@ -59,8 +63,12 @@
   let fix = $state.raw<Fix | null>(null);
   let gpsMessage = $state('Recherche de la position…');
   // Coordonnées tapées à la main (prioritaires sur le GPS quand elles sont remplies).
-  let latTexte = $state(obs?.lat !== undefined ? String(obs.lat) : '');
-  let lonTexte = $state(obs?.lon !== undefined ? String(obs.lon) : '');
+  let latTexte = $state(obs?.lat !== undefined ? String(obs.lat) : position ? position.lat.toFixed(6) : '');
+  let lonTexte = $state(obs?.lon !== undefined ? String(obs.lon) : position ? position.lon.toFixed(6) : '');
+  // D'où viennent les coordonnées du champ : tapées, choisies sur la carte, ou lues dans une photo.
+  let sourceCoord = $state<'manuel' | 'carte' | 'exif'>(position ? 'carte' : 'manuel');
+  const LIBELLE_SOURCE = { manuel: 'saisie à la main', carte: 'point choisi sur la carte', exif: 'position de la photo' } as const;
+  let infoPhoto = $state('');
 
   // --- Reste du formulaire ---
   let dateChamp = $state(pourChamp(obs ? new Date(obs.startAt) : new Date()));
@@ -135,7 +143,30 @@
     const champ = e.currentTarget as HTMLInputElement;
     const nouvelles = Array.from(champ.files ?? []).map((fichier) => ({ fichier, url: URL.createObjectURL(fichier) }));
     photos = [...photos, ...nouvelles];
+    // Photo choisie dans la galerie (pas prise à l'instant) : on reprend sa date et sa position.
+    const depuisGalerie = !champ.hasAttribute('capture');
     champ.value = '';
+    if (!modification && depuisGalerie && nouvelles.length) void reprendreInfosPhoto(nouvelles[0].fichier);
+  }
+
+  /** Propose la date et le GPS enregistrés dans la photo, sans écraser ce qui a été saisi à la main. */
+  async function reprendreInfosPhoto(fichier: File) {
+    const info = await readPhotoInfo(fichier);
+    const repris: string[] = [];
+    if (info.takenAt && !dateModifiee) {
+      dateChamp = pourChamp(info.takenAt);
+      dateModifiee = true;
+      repris.push(`date (${info.takenAt.toLocaleString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })})`);
+    }
+    if (info.lat !== undefined && info.lon !== undefined && (sourceCoord === 'exif' || (!latTexte.trim() && !lonTexte.trim()))) {
+      latTexte = info.lat.toFixed(6);
+      lonTexte = info.lon.toFixed(6);
+      sourceCoord = 'exif';
+      repris.push('position');
+    }
+    infoPhoto = repris.length
+      ? `Repris de la photo : ${repris.join(' et ')}.`
+      : "Cette photo ne contient ni date ni position exploitable : la date et le GPS actuels sont utilisés.";
   }
 
   function retirerPhoto(url: string) {
@@ -157,7 +188,7 @@
       if (obs && obs.lat === la && obs.lon === lo) {
         return { lat: la, lon: lo, accuracyM: obs.accuracyM, altitudeM: obs.altitudeM, source: obs.locationSource ?? 'manuel' };
       }
-      return { lat: la, lon: lo, source: 'manuel' };
+      return { lat: la, lon: lo, source: sourceCoord };
     }
     if (fix) return { lat: fix.lat, lon: fix.lon, accuracyM: fix.accuracyM, altitudeM: fix.altitudeM, source: 'gps' };
     return undefined;
@@ -240,9 +271,18 @@
     {/if}
 
     {#if !modification}
-      <p class="gps" class:alerte={!fix && gpsMessage !== 'Recherche de la position…'}>
+      <label class="puce photo-rapide">
+        🖼️ Partir d'une photo (date et position reprises)
+        <input type="file" accept="image/*" multiple hidden onchange={ajouterPhotos} />
+      </label>
+      {#if infoPhoto}<p class="doux">{infoPhoto}</p>{/if}
+      {#if photos.length}<p class="doux">{photos.length} photo{photos.length > 1 ? 's' : ''} jointe{photos.length > 1 ? 's' : ''}.</p>{/if}
+
+      <p class="gps" class:alerte={!fix && !latTexte.trim() && gpsMessage !== 'Recherche de la position…'}>
         📍
-        {#if fix}
+        {#if latTexte.trim() && lonTexte.trim()}
+          {latTexte}, {lonTexte} · {LIBELLE_SOURCE[sourceCoord]}
+        {:else if fix}
           {fix.lat.toFixed(5)}, {fix.lon.toFixed(5)} · ± {fix.accuracyM} m{fix.altitudeM !== undefined ? ` · ${fix.altitudeM} m d'altitude` : ''}
         {:else}
           {gpsMessage}
@@ -356,8 +396,8 @@
       <div class="ligne">
         <span>Coordonnées (latitude, longitude)</span>
         <div class="coordonnees">
-          <input class="champ" type="text" inputmode="decimal" placeholder={fix ? fix.lat.toFixed(5) : 'Latitude'} aria-label="Latitude" bind:value={latTexte} />
-          <input class="champ" type="text" inputmode="decimal" placeholder={fix ? fix.lon.toFixed(5) : 'Longitude'} aria-label="Longitude" bind:value={lonTexte} />
+          <input class="champ" type="text" inputmode="decimal" placeholder={fix ? fix.lat.toFixed(5) : 'Latitude'} aria-label="Latitude" bind:value={latTexte} oninput={() => (sourceCoord = 'manuel')} />
+          <input class="champ" type="text" inputmode="decimal" placeholder={fix ? fix.lon.toFixed(5) : 'Longitude'} aria-label="Longitude" bind:value={lonTexte} oninput={() => (sourceCoord = 'manuel')} />
         </div>
         {#if !modification}<small class="doux">Laisse vide pour utiliser le GPS.</small>{/if}
       </div>
@@ -530,6 +570,9 @@
   }
   details .puce {
     background: var(--fond);
+  }
+  .photo-rapide {
+    align-self: flex-start;
   }
   .puce.recent {
     border-color: var(--couleur);

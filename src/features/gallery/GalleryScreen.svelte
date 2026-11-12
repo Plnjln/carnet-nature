@@ -2,17 +2,14 @@
   // Galerie : grille virtualisée (seules les cartes visibles à l'écran sont créées),
   // ce qui la garde fluide avec 10 000 observations.
   import { GROUPS, type GroupId } from '../../domain/groups';
+  import { filters } from '../../stores/filters.svelte';
   import { obsStore } from '../../stores/obs.svelte';
-  import { normalize } from '../../taxonomy/normalize';
   import GroupIcon from '../../ui/GroupIcon.svelte';
   import GalleryCard from './GalleryCard.svelte';
 
   let { onOpen }: { onOpen: (id: string) => void } = $props();
 
   const HAUTEUR_LIGNE = 232; // carte de 220 px + 12 px d'espacement
-
-  let recherche = $state('');
-  let groupe = $state<GroupId | ''>('');
 
   // Groupes réellement présents, pour les puces de filtre.
   const groupesPresents = $derived.by(() => {
@@ -21,16 +18,8 @@
     return (Object.keys(GROUPS) as GroupId[]).filter((g) => vus.has(g));
   });
 
-  const filtrees = $derived.by(() => {
-    const mots = normalize(recherche).split(' ').filter(Boolean);
-    if (!groupe && mots.length === 0) return obsStore.rows;
-    return obsStore.rows.filter((o) => {
-      if (groupe && o.group !== groupe) return false;
-      if (mots.length === 0) return true;
-      const texte = normalize(`${o.vern} ${o.sci} ${o.family} ${o.order} ${o.place}`);
-      return mots.every((m) => texte.includes(m));
-    });
-  });
+  // Les filtres sont partagés avec la carte.
+  const filtrees = $derived(filters.rows);
 
   // Virtualisation : on calcule quelles lignes sont dans la fenêtre.
   let zone: HTMLDivElement | undefined = $state();
@@ -56,13 +45,13 @@
 <svelte:window bind:scrollY bind:innerHeight={hauteurVue} />
 
 <section class="page large">
-  <input class="champ" type="search" placeholder="Rechercher (espèce, famille, lieu)" autocomplete="off" bind:value={recherche} />
+  <input class="champ" type="search" placeholder="Rechercher (espèce, famille, lieu)" autocomplete="off" bind:value={filters.recherche} />
 
   {#if groupesPresents.length > 1}
     <div class="puces">
-      <button class="puce" class:active={groupe === ''} onclick={() => (groupe = '')}>Tout</button>
+      <button class="puce" class:active={filters.groupe === ''} onclick={() => (filters.groupe = '')}>Tout</button>
       {#each groupesPresents as g (g)}
-        <button class="puce" class:active={groupe === g} onclick={() => (groupe = groupe === g ? '' : g)}>
+        <button class="puce" class:active={filters.groupe === g} onclick={() => (filters.groupe = filters.groupe === g ? '' : g)}>
           <GroupIcon group={g} size="1.2rem" />
           {GROUPS[g].label}
         </button>

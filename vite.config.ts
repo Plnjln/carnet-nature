@@ -37,7 +37,19 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
         // L'index TAXREF (plusieurs Mo) est mis en cache à la première utilisation :
         // meta.json est revérifié en ligne, les fichiers de données (nom versionné) ne changent jamais.
+        // La carte (MapLibre) dépasse la limite par défaut de 2 Mo : on l'inclut quand même dans le cache hors ligne.
+        maximumFileSizeToCacheInBytes: 4_000_000,
         runtimeCaching: [
+          // Tuiles de carte déjà consultées : gardées pour un usage hors ligne (2 mois, 4 000 tuiles au plus).
+          {
+            urlPattern: ({ url }) => ['tile.openstreetmap.org', 'data.geopf.fr', 'demotiles.maplibre.org'].includes(url.hostname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'tuiles',
+              expiration: { maxEntries: 4000, maxAgeSeconds: 60 * 24 * 3600 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             urlPattern: ({ url }) => url.pathname.endsWith('/taxref/meta.json'),
             handler: 'NetworkFirst',
