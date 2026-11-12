@@ -1,13 +1,15 @@
 // Annuaire des clés et guides d'identification en ligne.
-// Chaque lien a été ouvert et vérifié avant d'être ajouté (voir la date ci-dessous).
-// Pour en ajouter un : copier une entrée dans l'un des fichiers ci-dessous, et ranger `path`
+// Pour ajouter un lien : copier une entrée dans l'un des fichiers ci-dessous, et ranger `path`
 // du groupe le plus large au plus précis.
+//   annuaire-insectes.ts, annuaire-autres.ts : liens ouverts et contrôlés un par un ;
+//   annuaire-pistes.ts : liens de sources reconnues, ajoutés sans contrôle.
 
 import { ANNUAIRE_AUTRES } from './annuaire-autres';
 import { ANNUAIRE_INSECTES } from './annuaire-insectes';
+import { ANNUAIRE_PISTES } from './annuaire-pistes';
 import type { KeyLink } from './types';
 
-/** Date de la dernière vérification des liens. */
+/** Date du dernier contrôle des liens vérifiés. */
 export const ANNUAIRE_VERIFIE_LE = '2026-11-13';
 
-export const ANNUAIRE: KeyLink[] = [...ANNUAIRE_INSECTES, ...ANNUAIRE_AUTRES];
+export const ANNUAIRE: KeyLink[] = [...ANNUAIRE_INSECTES, ...ANNUAIRE_AUTRES, ...ANNUAIRE_PISTES];

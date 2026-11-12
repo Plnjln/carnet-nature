@@ -56,4 +56,6 @@ export interface KeyLink {
   /** Ce que la ressource permet d'identifier. */
   scope: string;
   year: number | null;
+  /** Vrai si le lien a été ajouté sans être ouvert pour contrôle (source reconnue). */
+  nonVerifie?: boolean;
 }

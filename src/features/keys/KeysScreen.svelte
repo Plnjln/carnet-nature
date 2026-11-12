@@ -36,6 +36,7 @@
       <small>
         {l.kind} · {LANGUES[l.language] ?? l.language}{l.year ? ` · ${l.year}` : ''} · {l.author}
       </small>
+      {#if l.nonVerifie}<small class="non-verifie">Lien non contrôlé</small>{/if}
     </a>
   </li>
 {/snippet}
@@ -63,7 +64,7 @@
   {#if TOTAL_LIENS === 0}
     <p class="doux">L'annuaire est en cours de constitution.</p>
   {:else}
-    <p class="doux">{TOTAL_LIENS} ressources gratuites, vérifiées une à une, classées du groupe le plus large au plus précis. Elles s'ouvrent dans le navigateur et demandent du réseau.</p>
+    <p class="doux">{TOTAL_LIENS} ressources gratuites, classées du groupe le plus large au plus précis. Elles s'ouvrent dans le navigateur et demandent du réseau. Celles marquées « lien non contrôlé » viennent de sources reconnues mais n'ont pas été ouvertes pour vérification.</p>
 
     <input class="champ" type="search" placeholder="Chercher (ex. taupins, syrphes, chauves-souris)" autocomplete="off" bind:value={recherche} />
 
@@ -230,5 +231,8 @@
   }
   .fil-lien {
     font-weight: 600;
+  }
+  .lien .non-verifie {
+    font-style: italic;
   }
 </style>
