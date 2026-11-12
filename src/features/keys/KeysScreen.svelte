@@ -18,7 +18,7 @@
     onOpenKey: (c: IdKey) => void;
   } = $props();
 
-  const LANGUES: Record<string, string> = { fr: 'français', en: 'anglais', de: 'allemand', nl: 'néerlandais', es: 'espagnol', it: 'italien' };
+  const LANGUES: Record<string, string> = { fr: 'français', en: 'anglais', de: 'allemand', nl: 'néerlandais', es: 'espagnol', it: 'italien', no: 'norvégien' };
 
   let recherche = $state('');
 
