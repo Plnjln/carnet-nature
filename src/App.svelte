@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { requestPersistence } from './db/db';
   import CaptureSheet from './features/capture/CaptureSheet.svelte';
+  import { lastBackupAt } from './features/data/backup';
   import DataScreen from './features/data/DataScreen.svelte';
   import GalleryScreen from './features/gallery/GalleryScreen.svelte';
   import ObsDetail from './features/gallery/ObsDetail.svelte';
@@ -40,10 +41,19 @@
   }
 
   /** Message bref en bas d'écran. */
-  function annoncer(texte: string) {
+  function annoncer(texte: string, dureeMs = 3500) {
     annonce = texte;
     clearTimeout(minuterie);
-    minuterie = setTimeout(() => (annonce = ''), 3500);
+    minuterie = setTimeout(() => (annonce = ''), dureeMs);
+  }
+
+  /** Rappel au démarrage : tout est en local, une sauvegarde toutes les deux semaines au moins. */
+  async function rappelerSauvegarde() {
+    if (obsStore.rows.length === 0) return;
+    const DEUX_SEMAINES = 14 * 24 * 3600 * 1000;
+    const derniere = await lastBackupAt();
+    if (!derniere) annoncer('Aucune sauvegarde pour l\'instant : onglet Données → Sauvegarder tout.', 8000);
+    else if (Date.now() - derniere.getTime() > DEUX_SEMAINES) annoncer('Dernière sauvegarde il y a plus de deux semaines : onglet Données → Sauvegarder tout.', 8000);
   }
 
   function observationEnregistree(o: Observation) {
@@ -71,7 +81,7 @@
       // Stockage indisponible.
     }
     // Chargement des observations et demande de stockage persistant, sans bloquer l'affichage.
-    void obsStore.load();
+    void obsStore.load().then(rappelerSauvegarde);
     void requestPersistence();
   });
 </script>
