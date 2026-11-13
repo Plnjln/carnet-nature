@@ -224,6 +224,8 @@ export interface ObsLite {
   t: number;
   lat?: number;
   lon?: number;
+  /** Précision du point en mètres. */
+  acc?: number;
   group: GroupId;
   sci: string;
   vern: string;

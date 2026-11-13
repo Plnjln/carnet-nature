@@ -11,10 +11,17 @@ let groupe = $state<GroupId | ''>('');
 let taxonKey = $state('');
 let taxonLabel = $state('');
 
+// Ne garder que les observations à reprendre : « à confirmer », ou nom saisi librement.
+let aRevoir = $state(false);
+
+/** Vrai si l'observation mérite d'être reprise au calme. */
+export const estARevoir = (o: ObsLite): boolean => o.certainty === 'a-confirmer' || !o.taxonKey;
+
 const filtrees = $derived.by<ObsLite[]>(() => {
   const mots = normalize(recherche).split(' ').filter(Boolean);
-  if (!groupe && !taxonKey && mots.length === 0) return obsStore.rows;
+  if (!groupe && !taxonKey && !aRevoir && mots.length === 0) return obsStore.rows;
   return obsStore.rows.filter((o) => {
+    if (aRevoir && !estARevoir(o)) return false;
     if (taxonKey && o.taxonKey !== taxonKey) return false;
     if (groupe && o.group !== groupe) return false;
     if (mots.length === 0) return true;
@@ -46,10 +53,18 @@ export const filters = {
   get taxonLabel() {
     return taxonLabel;
   },
+  /** Ne garder que les observations à revoir. */
+  get aRevoir() {
+    return aRevoir;
+  },
+  set aRevoir(v: boolean) {
+    aRevoir = v;
+  },
   /** Ne garde que les observations d'un taxon (les autres filtres sont remis à zéro). */
   seulementTaxon(key: string, label: string) {
     recherche = '';
     groupe = '';
+    aRevoir = false;
     taxonKey = key;
     taxonLabel = label;
   },
@@ -59,7 +74,7 @@ export const filters = {
   },
   /** Vrai si au moins un filtre est actif. */
   get actifs() {
-    return groupe !== '' || taxonKey !== '' || recherche.trim() !== '';
+    return groupe !== '' || taxonKey !== '' || aRevoir || recherche.trim() !== '';
   },
   /** Observations qui passent les filtres. */
   get rows() {
@@ -68,6 +83,7 @@ export const filters = {
   effacer() {
     recherche = '';
     groupe = '';
+    aRevoir = false;
     taxonKey = '';
     taxonLabel = '';
   },

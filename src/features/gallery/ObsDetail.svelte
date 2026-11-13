@@ -3,6 +3,8 @@
   import { onDestroy, onMount } from 'svelte';
   import { db } from '../../db/db';
   import { deleteObservation } from '../../db/observations';
+  import { cropPhoto, removePhoto, setMainPhoto, type CropRect } from '../../db/photos';
+  import PhotoCrop from './PhotoCrop.svelte';
   import { GROUPS } from '../../domain/groups';
   import type { Observation, Photo } from '../../domain/types';
   import { labelOf } from '../../domain/vocab';
@@ -13,7 +15,15 @@
     onClose,
     onDeleted,
     onEdit,
-  }: { id: string; onClose: () => void; onDeleted: (id: string) => void; onEdit: (o: Observation) => void } = $props();
+    onChanged,
+  }: {
+    id: string;
+    onClose: () => void;
+    onDeleted: (id: string) => void;
+    onEdit: (o: Observation) => void;
+    /** Une photo a été retouchée : l'observation mise à jour est transmise. */
+    onChanged: (o: Observation) => void;
+  } = $props();
 
   /** « 12 °C · vent 7 km/h · nuages 65 % · pluie 0,2 mm » */
   function meteo(o: Observation): string {
@@ -86,6 +96,31 @@
     return new Date(iso).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  // --- Retouche des photos ---
+  const photoCourante = $derived(photos[indexPhoto]);
+  let recadrage = $state(false);
+  let occupePhoto = $state(false);
+  let erreurPhoto = $state('');
+
+  /** Lance une retouche, puis signale le changement (la fiche est alors rechargée). */
+  async function retoucher(action: (obsId: string, photoId: string) => Promise<Observation>) {
+    if (!obs || !photoCourante || occupePhoto) return;
+    occupePhoto = true;
+    erreurPhoto = '';
+    try {
+      onChanged(await action(obs.id, photoCourante.id));
+    } catch (e) {
+      erreurPhoto = `Retouche impossible : ${e instanceof Error ? e.message : String(e)}`;
+      occupePhoto = false;
+    }
+  }
+
+  const definirPrincipale = () => retoucher(setMainPhoto);
+  const recadrer = (r: CropRect) => retoucher((obsId, photoId) => cropPhoto(obsId, photoId, r));
+  function retirer() {
+    if (confirm('Retirer cette photo de l’observation ? Elle sera effacée de cet appareil.')) void retoucher(removePhoto);
+  }
+
   async function supprimer() {
     if (!obs || !confirm('Supprimer cette observation ?')) return;
     await deleteObservation(obs.id);
@@ -104,7 +139,9 @@
     {#if introuvable}
       <p class="alerte">Observation introuvable.</p>
     {:else if obs}
-      {#if photos.length}
+      {#if photos.length && recadrage && url}
+        <PhotoCrop {url} busy={occupePhoto} onCancel={() => (recadrage = false)} onApply={recadrer} />
+      {:else if photos.length}
         <div class="photo">
           {#if url}<img src={url} alt="" />{/if}
           {#if photos.length > 1}
@@ -112,7 +149,16 @@
             <button class="fleche droite" onclick={() => (indexPhoto = (indexPhoto + 1) % photos.length)} aria-label="Photo suivante">›</button>
             <span class="compte">{indexPhoto + 1} / {photos.length}</span>
           {/if}
+          {#if photoCourante && obs.mainPhotoId === photoCourante.id}<span class="principale">Photo principale</span>{/if}
         </div>
+        <div class="outils-photo">
+          {#if photoCourante && obs.mainPhotoId !== photoCourante.id}
+            <button class="outil" disabled={occupePhoto} onclick={definirPrincipale}>★ Principale</button>
+          {/if}
+          <button class="outil" disabled={occupePhoto || !url} onclick={() => (recadrage = true)}>✂ Recadrer</button>
+          <button class="outil danger" disabled={occupePhoto} onclick={retirer}>🗑 Retirer</button>
+        </div>
+        {#if erreurPhoto}<p class="alerte marge">{erreurPhoto}</p>{/if}
       {/if}
 
       <div class="infos">
@@ -282,6 +328,41 @@
   .actions {
     display: grid;
     gap: 10px;
+  }
+  .principale {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 0.85rem;
+  }
+  .outils-photo {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px 0;
+  }
+  .outil {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 2px solid var(--bord);
+    border-radius: 22px;
+    background: var(--surface);
+    color: var(--texte);
+    font-weight: 600;
+  }
+  .outil.danger {
+    color: var(--alerte);
+  }
+  .outil:disabled {
+    opacity: 0.5;
+  }
+  .marge {
+    padding: 8px 16px 0;
   }
   dt {
     color: var(--texte-doux);

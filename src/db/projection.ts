@@ -10,6 +10,7 @@ export function toLite(o: Observation): ObsLite {
     t: Date.parse(o.startAt),
     lat: o.lat,
     lon: o.lon,
+    acc: o.accuracyM,
     group: o.group,
     sci: o.taxon?.scientificName ?? o.taxonInput,
     vern: o.taxon?.vernacularName ?? '',

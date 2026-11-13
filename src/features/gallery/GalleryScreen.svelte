@@ -2,7 +2,7 @@
   // Galerie : grille virtualisée (seules les cartes visibles à l'écran sont créées),
   // ce qui la garde fluide avec 10 000 observations.
   import { GROUPS, type GroupId } from '../../domain/groups';
-  import { filters } from '../../stores/filters.svelte';
+  import { estARevoir, filters } from '../../stores/filters.svelte';
   import { obsStore } from '../../stores/obs.svelte';
   import GroupIcon from '../../ui/GroupIcon.svelte';
   import GalleryCard from './GalleryCard.svelte';
@@ -20,6 +20,7 @@
 
   // Les filtres sont partagés avec la carte.
   const filtrees = $derived(filters.rows);
+  const nbARevoir = $derived(obsStore.rows.reduce((n, o) => n + (estARevoir(o) ? 1 : 0), 0));
 
   // Virtualisation : on calcule quelles lignes sont dans la fenêtre.
   let zone: HTMLDivElement | undefined = $state();
@@ -57,6 +58,15 @@
         </button>
       {/each}
     </div>
+  {/if}
+
+  {#if nbARevoir > 0 || filters.aRevoir}
+    <button class="puce revoir" class:active={filters.aRevoir} onclick={() => (filters.aRevoir = !filters.aRevoir)}>
+      À revoir <span class="nombre">{nbARevoir.toLocaleString('fr-FR')}</span>
+    </button>
+    {#if filters.aRevoir}
+      <p class="doux">Observations « à confirmer » ou dont le nom a été saisi librement. Ouvre une fiche puis « Modifier » pour la reprendre.</p>
+    {/if}
   {/if}
 
   {#if filters.taxonKey}
@@ -136,6 +146,18 @@
   }
   .doux {
     margin: 10px 0;
+  }
+  .revoir {
+    margin-top: 2px;
+    border-color: var(--alerte);
+  }
+  .revoir.active {
+    border-color: var(--alerte);
+    background: var(--alerte);
+    color: var(--surface);
+  }
+  .nombre {
+    opacity: 0.8;
   }
   .filtre-taxon {
     margin: 10px 0 0;

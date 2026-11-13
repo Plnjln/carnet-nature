@@ -14,6 +14,7 @@
   import type { SpeciesSummary } from './features/species/species';
   import SpeciesDetail from './features/species/SpeciesDetail.svelte';
   import SpeciesScreen from './features/species/SpeciesScreen.svelte';
+  import StatsScreen from './features/species/StatsScreen.svelte';
   import { filters } from './stores/filters.svelte';
   import { obsStore } from './stores/obs.svelte';
   import BottomNav from './ui/BottomNav.svelte';
@@ -33,6 +34,7 @@
   let aModifier = $state.raw<Observation | null>(null);
   let positionSaisie = $state.raw<{ lat: number; lon: number } | undefined>(undefined);
   let espece = $state.raw<SpeciesSummary | null>(null);
+  let statsOuvertes = $state(false);
   let cleOuverte = $state.raw<IdKey | null>(null);
   let cheminAnnuaire = $state.raw<string[]>([]);
 
@@ -169,7 +171,7 @@
       <Placeholder icon="🗺️" title="Carte indisponible" text="La carte n'a pas pu être chargée. Vérifie la connexion puis réessaie." />
     {/await}
   {:else if screen === 'especes'}
-    <SpeciesScreen onOpenSpecies={(e) => (espece = e)} />
+    <SpeciesScreen onOpenSpecies={(e) => (espece = e)} onOpenStats={() => (statsOuvertes = true)} />
   {:else if screen === 'cles'}
     <KeysScreen chemin={cheminAnnuaire} onNavigate={(c) => (cheminAnnuaire = c)} onOpenKey={(c) => (cleOuverte = c)} />
   {:else}
@@ -198,6 +200,10 @@
   {/key}
 {/if}
 
+{#if statsOuvertes}
+  <StatsScreen onClose={() => (statsOuvertes = false)} />
+{/if}
+
 {#if espece}
   <SpeciesDetail
     {espece}
@@ -210,7 +216,16 @@
 
 {#if ficheId}
   {#key `${ficheId}:${ficheVersion}`}
-    <ObsDetail id={ficheId} onClose={() => (ficheId = null)} onDeleted={observationSupprimee} onEdit={(o) => (aModifier = o)} />
+    <ObsDetail
+      id={ficheId}
+      onClose={() => (ficheId = null)}
+      onDeleted={observationSupprimee}
+      onEdit={(o) => (aModifier = o)}
+      onChanged={(o) => {
+        obsStore.upsert(o);
+        ficheVersion++;
+      }}
+    />
   {/key}
 {/if}
 
