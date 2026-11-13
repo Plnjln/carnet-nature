@@ -9,6 +9,7 @@
   import 'maplibre-gl/dist/maplibre-gl.css';
   import { onDestroy, onMount } from 'svelte';
   import { db } from '../../db/db';
+  import { allTracks } from '../../db/sessions';
   import { GROUPS, type GroupId } from '../../domain/groups';
   import type { Observation, ObsLite } from '../../domain/types';
   import { circle, pointInPolygon, type LonLat } from '../../geo/geometry';
@@ -50,6 +51,8 @@
   let mois = $state(0);
   let annee = $state(0);
   let chaleur = $state(false);
+  let traces = $state(false);
+  let nbTraces = $state(0);
 
   // Zone dessinée : sommets posés un à un, puis zone fermée.
   let dessin = $state(false);
@@ -233,6 +236,7 @@
       m.addSource('obs-chaleur', { type: 'geojson', data });
       m.addSource('zone', { type: 'geojson', data: VIDE });
       m.addSource('precision', { type: 'geojson', data: VIDE });
+      m.addSource('traces', { type: 'geojson', data: VIDE });
 
       m.addLayer({
         id: 'chaleur',
@@ -245,6 +249,8 @@
           'heatmap-opacity': 0.8,
         },
       });
+      // Traces GPS des sorties.
+      m.addLayer({ id: 'traces', type: 'line', source: 'traces', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#d1401c', 'line-width': 3.5, 'line-opacity': 0.85 } });
       m.addLayer({ id: 'precision', type: 'fill', source: 'precision', paint: { 'fill-color': '#2f7fd1', 'fill-opacity': 0.18, 'fill-outline-color': '#2f7fd1' } });
       m.addLayer({ id: 'zone-surface', type: 'fill', source: 'zone', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#17603f', 'fill-opacity': 0.12 } });
       m.addLayer({ id: 'zone-trait', type: 'line', source: 'zone', filter: ['!=', ['geometry-type'], 'Point'], paint: { 'line-color': '#17603f', 'line-width': 3, 'line-dasharray': [2, 1] } });
@@ -371,6 +377,29 @@
     source('precision')?.setData(contour ? { type: 'Feature', geometry: { type: 'Polygon', coordinates: [contour] }, properties: {} } : VIDE);
   });
 
+  // Traces GPS : toutes les sorties si le bouton est actif, ou seulement la sortie filtrée.
+  $effect(() => {
+    const seule = filters.sessionId;
+    const voulues = traces || seule !== '';
+    if (!pret) return;
+    if (!voulues) {
+      source('traces')?.setData(VIDE);
+      return;
+    }
+    let annule = false;
+    allTracks().then((toutes) => {
+      if (annule) return;
+      const features: Feature[] = toutes
+        .filter((t) => t.points.length > 1 && (!seule || t.sessionId === seule))
+        .map((t) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: t.points.map((p) => [p[0], p[1]]) }, properties: {} }));
+      source('traces')?.setData({ type: 'FeatureCollection', features });
+      nbTraces = features.length;
+    });
+    return () => {
+      annule = true;
+    };
+  });
+
   $effect(() => {
     const enDessin = dessin;
     if (carte) carte.getCanvas().style.cursor = enDessin ? 'crosshair' : '';
@@ -437,6 +466,9 @@
       {periodeActive ? [mois ? MOIS[mois] : '', annee || ''].filter(Boolean).join(' ') : 'Période'}
     </button>
     <button class="pastille" class:active={chaleur} onclick={() => (chaleur = !chaleur)}>Chaleur</button>
+    <button class="pastille" class:active={traces} onclick={() => (traces = !traces)}>
+      Traces{traces ? ` (${nbTraces})` : ''}
+    </button>
     {#if !dessin && !zoneFermee}
       <button class="pastille" onclick={commencerZone}>Zone</button>
     {/if}
@@ -532,7 +564,8 @@
     position: fixed;
     left: 0;
     right: 0;
-    top: calc(64px + env(safe-area-inset-top));
+    /* --entete : hauteur de l'en-tête, plus grande quand le bandeau de sortie est affiché. */
+    top: calc(var(--entete, 64px) + env(safe-area-inset-top));
     bottom: calc(64px + env(safe-area-inset-bottom));
     z-index: 1;
     background: var(--bord);
@@ -540,7 +573,7 @@
   .outils {
     position: fixed;
     left: 10px;
-    top: calc(74px + env(safe-area-inset-top));
+    top: calc(var(--entete, 64px) + 10px + env(safe-area-inset-top));
     z-index: 2;
     display: flex;
     flex-direction: column;

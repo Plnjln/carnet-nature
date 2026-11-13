@@ -11,6 +11,10 @@ let groupe = $state<GroupId | ''>('');
 let taxonKey = $state('');
 let taxonLabel = $state('');
 
+// Filtre sur une sortie (posé depuis la liste des sorties) : identifiant et nom affiché.
+let sessionId = $state('');
+let sessionLabel = $state('');
+
 // Ne garder que les observations à reprendre : « à confirmer », ou nom saisi librement.
 let aRevoir = $state(false);
 
@@ -19,8 +23,9 @@ export const estARevoir = (o: ObsLite): boolean => o.certainty === 'a-confirmer'
 
 const filtrees = $derived.by<ObsLite[]>(() => {
   const mots = normalize(recherche).split(' ').filter(Boolean);
-  if (!groupe && !taxonKey && !aRevoir && mots.length === 0) return obsStore.rows;
+  if (!groupe && !taxonKey && !sessionId && !aRevoir && mots.length === 0) return obsStore.rows;
   return obsStore.rows.filter((o) => {
+    if (sessionId && o.session !== sessionId) return false;
     if (aRevoir && !estARevoir(o)) return false;
     if (taxonKey && o.taxonKey !== taxonKey) return false;
     if (groupe && o.group !== groupe) return false;
@@ -53,6 +58,27 @@ export const filters = {
   get taxonLabel() {
     return taxonLabel;
   },
+  /** Sortie retenue (identifiant), ou chaîne vide. */
+  get sessionId() {
+    return sessionId;
+  },
+  get sessionLabel() {
+    return sessionLabel;
+  },
+  /** Ne garde que les observations d'une sortie (les autres filtres sont remis à zéro). */
+  seulementSession(id: string, label: string) {
+    recherche = '';
+    groupe = '';
+    aRevoir = false;
+    taxonKey = '';
+    taxonLabel = '';
+    sessionId = id;
+    sessionLabel = label;
+  },
+  retirerSession() {
+    sessionId = '';
+    sessionLabel = '';
+  },
   /** Ne garder que les observations à revoir. */
   get aRevoir() {
     return aRevoir;
@@ -65,6 +91,8 @@ export const filters = {
     recherche = '';
     groupe = '';
     aRevoir = false;
+    sessionId = '';
+    sessionLabel = '';
     taxonKey = key;
     taxonLabel = label;
   },
@@ -74,7 +102,7 @@ export const filters = {
   },
   /** Vrai si au moins un filtre est actif. */
   get actifs() {
-    return groupe !== '' || taxonKey !== '' || aRevoir || recherche.trim() !== '';
+    return groupe !== '' || taxonKey !== '' || sessionId !== '' || aRevoir || recherche.trim() !== '';
   },
   /** Observations qui passent les filtres. */
   get rows() {
@@ -86,5 +114,7 @@ export const filters = {
     aRevoir = false;
     taxonKey = '';
     taxonLabel = '';
+    sessionId = '';
+    sessionLabel = '';
   },
 };

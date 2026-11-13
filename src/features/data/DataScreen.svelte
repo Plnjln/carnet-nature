@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { db, requestPersistence } from '../../db/db';
   import { loadProjection } from '../../db/projection';
+  import { statutsInfo } from '../../reference/statuts';
   import { obsStore } from '../../stores/obs.svelte';
   import { initTaxonIndex, type IndexInfo } from '../../taxonomy/client';
   import { createBackup, lastBackupAt, restoreBackup } from './backup';
@@ -116,6 +117,7 @@
   let nbObs = $state<number | null>(null);
   let nbPhotos = $state<number | null>(null);
   let index = $state<IndexInfo | null>(null);
+  let statuts = $state.raw<{ genereLe: string; source: string } | null>(null);
 
   let occupe = $state(false);
   let progression = $state('');
@@ -142,6 +144,7 @@
     initTaxonIndex()
       .then((i) => (index = i))
       .catch(() => (index = null));
+    void statutsInfo().then((i) => (statuts = i));
   });
 
   async function demanderPersistance() {
@@ -272,7 +275,12 @@
     Licence CC BY 4.0.
     {#if index}Index généré le {new Date(index.genereLe).toLocaleDateString('fr-FR')}.{/if}
   </p>
-  <p class="doux">Fonds de carte (à venir) : © contributeurs OpenStreetMap, © IGN Géoplateforme.</p>
+  <p class="doux">
+    Statuts de protection et listes rouges : base de connaissance « Statuts » de l'INPN (MNHN / PatriNat), France métropolitaine.
+    {#if statuts}Mis à jour le {new Date(statuts.genereLe).toLocaleDateString('fr-FR')}.{:else}Non disponibles pour l'instant.{/if}
+  </p>
+  <p class="doux">Photos de référence : iNaturalist (auteur et licence indiqués sur chaque fiche). Descriptions : Wikipédia, CC BY-SA.</p>
+  <p class="doux">Fonds de carte : © contributeurs OpenStreetMap, © IGN Géoplateforme.</p>
 </section>
 
 <style>

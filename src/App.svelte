@@ -15,12 +15,15 @@
   import SpeciesDetail from './features/species/SpeciesDetail.svelte';
   import SpeciesScreen from './features/species/SpeciesScreen.svelte';
   import StatsScreen from './features/species/StatsScreen.svelte';
+  import SessionSheet from './features/session/SessionSheet.svelte';
+  import TallyScreen from './features/session/TallyScreen.svelte';
   import { filters } from './stores/filters.svelte';
   import { obsStore } from './stores/obs.svelte';
+  import { sessionStore } from './stores/session.svelte';
   import BottomNav from './ui/BottomNav.svelte';
   import Placeholder from './ui/Placeholder.svelte';
   import type { Screen } from './ui/screens';
-  import type { Observation } from './domain/types';
+  import type { FieldSession, Observation } from './domain/types';
 
   type Theme = 'auto' | 'clair' | 'sombre';
   const THEMES: Theme[] = ['auto', 'clair', 'sombre'];
@@ -46,6 +49,39 @@
     screen = ecran;
     window.scrollTo({ top: 0 });
   }
+  // --- Sortie de terrain en cours ---
+  let sortiesOuvertes = $state(false);
+  let pointageOuvert = $state(false);
+  let horloge = $state(Date.now());
+  const sortie = $derived(sessionStore.active);
+  const nbObsSortie = $derived(sortie ? obsStore.rows.reduce((n, o) => n + (o.session === sortie.id ? 1 : 0), 0) : 0);
+  const dureeSortie = $derived.by(() => {
+    if (!sortie) return '';
+    const minutes = Math.max(0, Math.floor((horloge - Date.parse(sortie.startAt)) / 60_000));
+    return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`;
+  });
+
+  // La carte, en position fixe, doit laisser la place du bandeau de sortie sous l'en-tête.
+  $effect(() => {
+    document.documentElement.style.setProperty('--entete', sortie ? '120px' : '64px');
+  });
+
+  async function terminerSortie() {
+    if (!sortie || !confirm(`Terminer la sortie « ${sortie.name ?? 'Sortie'} » ?`)) return;
+    const n = nbObsSortie;
+    pointageOuvert = false;
+    await sessionStore.stop();
+    annoncer(`Sortie terminée : ${n} observation${n > 1 ? 's' : ''}`);
+  }
+
+  /** Depuis la liste des sorties : n'afficher que les observations d'une sortie. */
+  function montrerSortie(s: FieldSession, ou: 'galerie' | 'carte') {
+    filters.seulementSession(s.id, s.name ?? 'Sortie');
+    sortiesOuvertes = false;
+    screen = ou;
+    window.scrollTo({ top: 0 });
+  }
+
   let theme = $state<Theme>('auto');
   let annonce = $state('');
   let minuterie: ReturnType<typeof setTimeout> | undefined;
@@ -143,19 +179,39 @@
     // Reprise des enrichissements restés en attente (saisies faites hors ligne).
     enrichir();
     window.addEventListener('online', enrichir);
-    return () => window.removeEventListener('online', enrichir);
+    // Reprise d'une sortie restée en cours, et horloge du bandeau.
+    void sessionStore.restore();
+    const tic = setInterval(() => (horloge = Date.now()), 30_000);
+    return () => {
+      window.removeEventListener('online', enrichir);
+      clearInterval(tic);
+    };
   });
 </script>
 
-<header class="entete">
-  <span class="titre">Carnet Nature</span>
-  <span class="boutons">
-    <button class="theme" class:actif={screen === 'donnees'} onclick={() => (screen = 'donnees')} aria-label="Données, sauvegarde et réglages">💾</button>
-    <button class="theme" onclick={changerTheme} aria-label="Thème : {theme}. Changer de thème">
-      {ICONES_THEME[theme]}
-    </button>
-  </span>
-</header>
+<div class="haut">
+  <header class="entete">
+    <span class="titre">Carnet Nature</span>
+    <span class="boutons">
+      <button class="theme" class:actif={sortiesOuvertes} onclick={() => (sortiesOuvertes = true)} aria-label="Sorties de terrain">🥾</button>
+      <button class="theme" class:actif={screen === 'donnees'} onclick={() => (screen = 'donnees')} aria-label="Données, sauvegarde et réglages">💾</button>
+      <button class="theme" onclick={changerTheme} aria-label="Thème : {theme}. Changer de thème">
+        {ICONES_THEME[theme]}
+      </button>
+    </span>
+  </header>
+
+  {#if sortie}
+    <div class="sortie" role="status">
+      <span class="sortie-texte">
+        <strong>{sortie.name ?? 'Sortie'}</strong>
+        <small>{dureeSortie} · {nbObsSortie} obs.{sessionStore.tracer ? ` · trace ${sessionStore.nbPoints} pts` : ''}</small>
+      </span>
+      <button class="sortie-bouton" onclick={() => (pointageOuvert = true)}>Pointage</button>
+      <button class="sortie-bouton fin" onclick={terminerSortie}>Terminer</button>
+    </div>
+  {/if}
+</div>
 
 <main>
   {#if screen === 'galerie'}
@@ -182,7 +238,30 @@
 <BottomNav current={screen} onNavigate={(s) => (screen = s)} onAdd={() => (saisieOuverte = true)} />
 
 {#if saisieOuverte}
-  <CaptureSheet position={positionSaisie} onClose={fermerSaisie} onSaved={observationEnregistree} />
+  <CaptureSheet position={positionSaisie} session={sortie} onClose={fermerSaisie} onSaved={observationEnregistree} />
+{/if}
+
+{#if sortiesOuvertes}
+  <SessionSheet
+    onClose={() => (sortiesOuvertes = false)}
+    onStarted={(s) => {
+      sortiesOuvertes = false;
+      annoncer(`Sortie « ${s.name ?? 'Sortie'} » démarrée`);
+    }}
+    onShow={montrerSortie}
+  />
+{/if}
+
+{#if pointageOuvert && sortie}
+  <TallyScreen
+    session={sortie}
+    onClose={() => (pointageOuvert = false)}
+    onCreated={(o) => {
+      obsStore.upsert(o);
+      void queueEnrichment(o).then(enrichir);
+    }}
+    onChanged={(o) => obsStore.upsert(o)}
+  />
 {/if}
 
 {#if cleOuverte}
@@ -238,10 +317,51 @@
 {/if}
 
 <style>
-  .entete {
+  .haut {
     position: sticky;
     top: 0;
     z-index: 5;
+  }
+  .sortie {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 56px;
+    padding: 0 8px 0 16px;
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+  }
+  .sortie-texte {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+  .sortie-texte strong,
+  .sortie-texte small {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sortie-texte small {
+    color: var(--texte-doux);
+  }
+  .sortie-bouton {
+    flex: none;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 2px solid var(--accent);
+    border-radius: 22px;
+    background: var(--accent);
+    color: var(--sur-accent);
+    font-weight: 700;
+  }
+  .sortie-bouton.fin {
+    background: transparent;
+    color: var(--accent);
+  }
+  .entete {
     display: flex;
     align-items: center;
     justify-content: space-between;

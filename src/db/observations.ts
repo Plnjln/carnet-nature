@@ -140,6 +140,8 @@ export interface ObsInput {
   details: ObsDetails;
   /** Photos à ajouter. */
   newPhotos: Blob[];
+  /** Sortie en cours à laquelle rattacher une nouvelle observation. */
+  sessionId?: string;
 }
 
 interface PhotosPretes {
@@ -227,6 +229,7 @@ export async function createObservation(n: ObsInput): Promise<Observation> {
     accuracyM: n.position?.accuracyM,
     altitudeM: n.position?.altitudeM,
     locationSource: n.position?.source,
+    sessionId: n.sessionId,
     mainPhotoId: p.photos[0]?.id,
     photoCount: p.photos.length,
   };
@@ -286,6 +289,15 @@ export async function updateObservation(id: string, n: ObsInput): Promise<Observ
   });
   if (taxonRecent) await memoriser(taxonRecent);
   return obs;
+}
+
+/** Pointage : ajoute (ou retire) des individus à l'effectif d'une observation, sans descendre sous 1. */
+export async function incrementCount(id: string, delta: number): Promise<Observation> {
+  const o = await db.observations.get(id);
+  if (!o) throw new Error('Observation introuvable');
+  const value = Math.max(1, (o.count?.value ?? 1) + delta);
+  await db.observations.update(id, { count: { kind: 'exact', value }, updatedAt: new Date().toISOString() });
+  return (await db.observations.get(id)) ?? o;
 }
 
 /** Suppression « douce » : l'observation est marquée supprimée, pas détruite (utile pour la fusion entre appareils). */

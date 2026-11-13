@@ -16,16 +16,18 @@
     type RecentTaxon,
   } from '../../db/observations';
   import { GROUPS, type GroupId } from '../../domain/groups';
-  import type { Certainty, Observation } from '../../domain/types';
+  import type { Certainty, FieldSession, Observation } from '../../domain/types';
   import { ATLAS, behavioursFor, contactsFor, HABITATS, SEXES, stagesFor } from '../../domain/vocab';
   import { watchPosition, type Fix } from '../../geo/position';
   import { readPhotoInfo } from '../../media/exif';
   import { initTaxonIndex, searchTaxa } from '../../taxonomy/client';
   import GroupIcon from '../../ui/GroupIcon.svelte';
+  import StatusBadges from '../../ui/StatusBadges.svelte';
 
   let {
     obs,
     position,
+    session,
     onClose,
     onSaved,
   }: {
@@ -33,6 +35,8 @@
     obs?: Observation;
     /** Point choisi sur la carte (appui long), pour une nouvelle saisie. */
     position?: { lat: number; lon: number };
+    /** Sortie en cours : la nouvelle observation s'y rattache, avec son lieu-dit. */
+    session?: FieldSession | null;
     onClose: () => void;
     onSaved: (o: Observation) => void;
   } = $props();
@@ -76,7 +80,7 @@
   let effectif = $state<number | null>(obs?.count?.value ?? 1);
   let certitude = $state<Certainty>(obs?.certainty ?? 'certain');
   let notes = $state(obs?.notes ?? '');
-  let details = $state<ObsDetails>(obs ? detailsFromObservation(obs) : emptyDetails());
+  let details = $state<ObsDetails>(obs ? detailsFromObservation(obs) : { ...emptyDetails(), placeName: session?.placeName ?? '' });
   let etiquettes = $state(obs ? obs.tags.join(', ') : '');
   let photos = $state.raw<{ fichier: File; url: string }[]>([]);
 
@@ -211,6 +215,7 @@
         notes,
         details,
         newPhotos: photos.map((p) => p.fichier),
+        sessionId: obs ? undefined : session?.id,
       };
       if (Number.isNaN(saisie.startAt.getTime())) throw new Error('Date invalide.');
       onSaved(obs ? await updateObservation(obs.id, saisie) : await createObservation(saisie));
@@ -245,6 +250,8 @@
         <span class="teinte"><GroupIcon group={choisi.group} size="1.6rem" /></span>
         <span><strong>{choisi.vern || choisi.sci}</strong> <em>{choisi.sci}</em></span>
       </p>
+      <!-- Ce qui mérite l'attention au moment de la saisie : espèce protégée, menacée ou envahissante. -->
+      <StatusBadges cdNom={choisi.cdNom} important />
     {:else if hits.length}
       <ul class="propositions">
         {#each hits as h (h.cdNom)}
@@ -268,6 +275,10 @@
           </button>
         {/each}
       </div>
+    {/if}
+
+    {#if !modification && session}
+      <p class="doux">Rattachée à la sortie « {session.name ?? 'Sortie'} ».</p>
     {/if}
 
     {#if !modification}

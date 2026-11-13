@@ -8,7 +8,9 @@
   import { congenersOf } from '../../taxonomy/client';
   import type { SearchHit } from '../../taxonomy/search-core';
   import GroupIcon from '../../ui/GroupIcon.svelte';
+  import { cdNomDe } from '../../reference/statuts';
   import RefPhoto from '../../ui/RefPhoto.svelte';
+  import StatusBadges from '../../ui/StatusBadges.svelte';
   import Thumb from '../../ui/Thumb.svelte';
   import { perMonth, type SpeciesSummary } from './species';
 
@@ -90,6 +92,7 @@
         </div>
       </div>
       {#if credit}<p class="credit">Photo de référence : {credit}, via iNaturalist.</p>{/if}
+      <div class="bloc-statuts"><StatusBadges cdNom={cdNomDe(espece.key)} detail /></div>
 
       <ul class="faits">
         <li><span>Observations</span><strong>{observations.length.toLocaleString('fr-FR')}</strong></li>
@@ -240,6 +243,9 @@
     overflow: hidden;
     background: color-mix(in srgb, var(--couleur) 18%, var(--surface));
     color: var(--couleur);
+  }
+  .bloc-statuts {
+    margin-top: 10px;
   }
   .credit {
     margin-top: 6px;

@@ -21,6 +21,7 @@ export function toLite(o: Observation): ObsLite {
     count: o.count?.value ?? 1,
     photoId: o.mainPhotoId ?? '',
     place: o.placeName || o.commune || '',
+    session: o.sessionId ?? '',
   };
 }
 

@@ -8,7 +8,9 @@
   import { GROUPS } from '../../domain/groups';
   import type { Observation, Photo } from '../../domain/types';
   import { labelOf } from '../../domain/vocab';
+  import { cdNomDe } from '../../reference/statuts';
   import GroupIcon from '../../ui/GroupIcon.svelte';
+  import StatusBadges from '../../ui/StatusBadges.svelte';
 
   let {
     id,
@@ -166,6 +168,7 @@
         {#if obs.taxon}
           <p><em>{obs.taxon.scientificName}</em></p>
           <p class="doux">{lignee.join(' › ')}</p>
+          <StatusBadges cdNom={cdNomDe(obs.taxonKey)} />
         {:else}
         <p class="doux">Nom saisi librement, pas encore rapproché d'un référentiel.</p>
         {/if}

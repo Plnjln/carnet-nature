@@ -69,6 +69,13 @@
     {/if}
   {/if}
 
+  {#if filters.sessionId}
+    <p class="filtre-taxon">
+      Sortie : <strong>{filters.sessionLabel}</strong>
+      <button class="lien" onclick={() => filters.retirerSession()}>tout afficher</button>
+    </p>
+  {/if}
+
   {#if filters.taxonKey}
     <p class="filtre-taxon">
       Uniquement : <strong>{filters.taxonLabel}</strong>

@@ -236,4 +236,6 @@ export interface ObsLite {
   count: number;
   photoId: string;
   place: string;
+  /** Identifiant de la sortie de rattachement, ou chaîne vide. */
+  session?: string;
 }
