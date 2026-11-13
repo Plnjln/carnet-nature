@@ -34,7 +34,7 @@ let chargement: Promise<{ parTaxon: Map<number, Statut[]>; genereLe: string; sou
 function charger() {
   chargement ??= (async () => {
     try {
-      const r = await fetch(`${import.meta.env.BASE_URL}taxref/statuts.json`);
+      const r = await fetch(`${import.meta.env.BASE_URL}statuts.json`);
       if (!r.ok) return null;
       const f = (await r.json()) as Fichier;
       const parTaxon = new Map<number, Statut[]>();

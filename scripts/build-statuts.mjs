@@ -11,13 +11,15 @@
 //   REGLII  espèces exotiques envahissantes (interdiction d'introduction)
 //
 // L'API n'est pas utilisable depuis un navigateur (pas d'en-tête CORS), d'où ce passage par un
-// fichier. Ce script ne fait JAMAIS échouer la compilation : si l'API est indisponible, l'app est
-// publiée sans statuts, et ils reviendront à la publication suivante.
+// fichier. Constaté le 13 novembre 2026 : elle ne répond pas non plus aux machines de GitHub
+// Actions. Un fichier public/statuts.json, récupéré depuis un ordinateur, est donc livré avec le
+// projet ; ce script le met à jour quand il le peut, et sinon le laisse tel quel.
+// Il ne fait JAMAIS échouer la compilation.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const outDir = process.argv[2] ?? 'public/taxref';
+const outDir = process.argv[2] ?? 'public';
 const API = 'https://taxref.mnhn.fr/api/status/search/lines';
 const TAILLE_PAGE = 2000;
 const METROPOLE = 'TERFXFR';
@@ -94,8 +96,11 @@ for (const [type, territoire, maxPages] of TYPES) {
   }
 }
 
-if (lignes.length === 0) {
-  console.warn("Aucun statut récupéré : l'app sera publiée sans statuts de protection.");
+// On ne remplace le fichier livré avec le projet (public/statuts.json) que par une récupération
+// complète : une réponse partielle ferait perdre des statuts.
+const complet = TYPES.every(([t]) => compteurs[t] > 0);
+if (!complet) {
+  console.warn("Récupération des statuts incomplète ou impossible : le fichier statuts.json livré avec le projet est conservé tel quel.");
 } else {
   try {
     mkdirSync(outDir, { recursive: true });

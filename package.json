@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/build-statuts.mjs public/taxref && vite build",
-    "statuts": "node scripts/build-statuts.mjs public/taxref",
+    "build": "node scripts/build-statuts.mjs public && vite build",
+    "statuts": "node scripts/build-statuts.mjs public",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",

@@ -62,7 +62,7 @@ export default defineConfig({
           },
           {
             // meta.json et statuts.json gardent le même nom d'une version à l'autre : on les revérifie en ligne.
-            urlPattern: ({ url }) => url.pathname.endsWith('/taxref/meta.json') || url.pathname.endsWith('/taxref/statuts.json'),
+            urlPattern: ({ url }) => url.pathname.endsWith('/taxref/meta.json') || url.pathname.endsWith('/statuts.json'),
             handler: 'NetworkFirst',
             options: { cacheName: 'taxref-meta', networkTimeoutSeconds: 4 },
           },
