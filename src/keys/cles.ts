@@ -6,12 +6,13 @@
 // Elles servent à s'orienter, pas à valider une détermination : pour aller à l'espèce, utiliser
 // les clés de l'annuaire.
 
+import { CLES_FAMILLES } from './cles-familles';
 import type { IdKey } from './types';
 
 export const AVERTISSEMENT =
   "Clé d'orientation rédigée par une IA et non relue par un spécialiste. Elle s'arrête à l'ordre ou à la famille et vise les adultes de France métropolitaine. Pour l'espèce, passe par les clés de l'annuaire.";
 
-export const CLES: IdKey[] = [
+const CLES_ORDRES: IdKey[] = [
   {
     id: 'insectes-ordres',
     titre: "Insectes : trouver l'ordre",
@@ -98,6 +99,7 @@ export const CLES: IdKey[] = [
         nom: 'Coléoptères',
         sci: 'Coleoptera',
         texte: "L'ordre le plus riche en espèces : carabes, coccinelles, longicornes, charançons, scarabées… Pièces buccales broyeuses.",
+        suite: 'coleopteres-familles',
         annuaire: ['Insectes', 'Coléoptères'],
       },
       'r-staphylins': {
@@ -119,6 +121,7 @@ export const CLES: IdKey[] = [
         nom: 'Hémiptères : punaises',
         sci: 'Hemiptera, Heteroptera',
         texte: 'Un écusson triangulaire est visible entre les ailes. Comprend aussi les punaises aquatiques (gerris, notonectes, nèpes).',
+        suite: 'punaises-familles',
         annuaire: ['Insectes', 'Hémiptères'],
       },
       'r-homopteres': {
@@ -141,6 +144,7 @@ export const CLES: IdKey[] = [
         nom: 'Diptères (mouches, syrphes, moustiques, tipules)',
         sci: 'Diptera',
         texte: "Beaucoup de syrphes imitent des guêpes ou des abeilles : compter les ailes (une seule paire) et regarder les antennes, très courtes, lève le doute.",
+        suite: 'dipteres-familles',
         annuaire: ['Insectes', 'Diptères'],
       },
       'r-orthopteres': {
@@ -184,6 +188,7 @@ export const CLES: IdKey[] = [
         nom: 'Hyménoptères (abeilles, guêpes, fourmis ailées, tenthrèdes)',
         sci: 'Hymenoptera',
         texte: "Les tenthrèdes (« mouches à scie ») n'ont pas la taille étranglée. Les mâles et les reines de fourmis sont ailés au moment de l'essaimage.",
+        suite: 'hymenopteres-groupes',
         annuaire: ['Insectes', 'Hyménoptères'],
       },
       'r-fourmis': {
@@ -575,6 +580,7 @@ export const CLES: IdKey[] = [
         nom: 'Araignées',
         sci: 'Araneae',
         texte: 'La disposition des yeux et la forme de la toile orientent vers la famille. L’espèce demande souvent l’examen des pièces génitales à la loupe.',
+        suite: 'araignees-familles',
         annuaire: ['Arachnides', 'Araignées'],
       },
       'r-opilions': {
@@ -606,3 +612,6 @@ export const CLES: IdKey[] = [
     },
   },
 ];
+
+/** Toutes les clés : d'abord celles qui mènent à l'ordre, puis celles qui mènent à la famille. */
+export const CLES: IdKey[] = [...CLES_ORDRES, ...CLES_FAMILLES];

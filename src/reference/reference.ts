@@ -88,18 +88,30 @@ const SECTIONS_DESCRIPTION = /^(description|morphologie|identification|caractér
 /** Texte brut des paragraphes d'un fragment HTML de Wikipédia (sans notes, tableaux ni légendes). */
 function paragraphes(html: string): string[] {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  doc.querySelectorAll('sup, table, figure, style, .mw-editsection, .bandeau-container, .infobox, .thumb, .gallery').forEach((e) => e.remove());
+  // Tout ce qui n'est pas du texte courant est retiré : appels de note, listes de références,
+  // bibliographie, tableaux, légendes, bandeaux.
+  doc
+    .querySelectorAll(
+      'sup, table, figure, style, ol.references, .references, .references-small, .reference, .mw-references-wrap, .reflist, .mw-editsection, .bandeau-container, .infobox, .thumb, .gallery, .navbox, .noprint, .ouvrage, cite',
+    )
+    .forEach((e) => e.remove());
   const sortie: string[] = [];
-  doc.querySelectorAll('p, li').forEach((e) => {
-    const texte = (e.textContent ?? '').replace(/\s+/g, ' ').trim();
+  // Seuls les paragraphes sont gardés (les listes contiennent surtout des références et des liens).
+  doc.querySelectorAll('p').forEach((e) => {
+    const texte = (e.textContent ?? '')
+      .replace(/\[(?:\d+|[a-z]|note \d+|réf\.[^\]]*|N \d+)\]/gi, '') // appels de note restés en texte
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([,.])/g, '$1') // l'espace laissé par un appel de note retiré avant une virgule ou un point
+      .trim();
     if (texte.length > 20) sortie.push(texte);
   });
-  return sortie.slice(0, 12);
+  return sortie.slice(0, 8);
 }
 
 /** Description d'un taxon d'après Wikipédia en français, ou null s'il n'y a pas d'article. */
 export function getRefText(sci: string): Promise<RefText | null> {
-  return avecCache<RefText>(`texte:${sci}`, async () => {
+  // « texte2 » : la clé a changé quand les références ont été retirées, pour ne pas resservir les anciens textes.
+  return avecCache<RefText>(`texte2:${sci}`, async () => {
     type Resume = { type?: string; title?: string; extract?: string; content_urls?: { desktop?: { page?: string } } };
     const titreDemande = encodeURIComponent(sci.replace(/ /g, '_'));
     const resume = await json<Resume | null>(`https://fr.wikipedia.org/api/rest_v1/page/summary/${titreDemande}?redirect=true`);
