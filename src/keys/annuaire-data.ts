@@ -8,9 +8,10 @@ import { ANNUAIRE_AUTRES } from './annuaire-autres';
 import { ANNUAIRE_COMMUNAUTE } from './annuaire-communaute';
 import { ANNUAIRE_INSECTES } from './annuaire-insectes';
 import { ANNUAIRE_PISTES } from './annuaire-pistes';
+import { ANNUAIRE_RECOLTE } from './annuaire-recolte';
 import type { KeyLink } from './types';
 
 /** Date du dernier contrôle des liens vérifiés. */
 export const ANNUAIRE_VERIFIE_LE = '2026-11-13';
 
-export const ANNUAIRE: KeyLink[] = [...ANNUAIRE_INSECTES, ...ANNUAIRE_AUTRES, ...ANNUAIRE_PISTES, ...ANNUAIRE_COMMUNAUTE];
+export const ANNUAIRE: KeyLink[] = [...ANNUAIRE_INSECTES, ...ANNUAIRE_AUTRES, ...ANNUAIRE_PISTES, ...ANNUAIRE_COMMUNAUTE, ...ANNUAIRE_RECOLTE];
