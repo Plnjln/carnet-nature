@@ -566,7 +566,7 @@
     right: 0;
     /* --entete : hauteur de l'en-tête, plus grande quand le bandeau de sortie est affiché. */
     top: calc(var(--entete, 64px) + env(safe-area-inset-top));
-    bottom: calc(64px + env(safe-area-inset-bottom));
+    bottom: calc(68px + env(safe-area-inset-bottom));
     z-index: 1;
     background: var(--bord);
   }

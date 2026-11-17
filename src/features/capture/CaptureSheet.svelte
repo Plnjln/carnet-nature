@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '../../ui/Icon.svelte';
   // Formulaire d'observation, pour la saisie rapide comme pour la modification.
   // Saisie rapide : un taxon, la position GPS et l'heure suffisent ; tout le reste est dans des
   // sections dépliables. Parcours le plus court : « + » → tap sur un taxon récent → « Enregistrer ».
@@ -229,7 +230,7 @@
 <div class="feuille" role="dialog" aria-modal="true" aria-label={modification ? "Modifier l'observation" : 'Nouvelle observation'}>
   <header class="tete">
     <h1>{modification ? "Modifier l'observation" : 'Nouvelle observation'}</h1>
-    <button class="fermer" onclick={onClose} aria-label="Fermer">✕</button>
+    <button class="fermer" onclick={onClose} aria-label="Fermer"><Icon name="fermer" size={24} stroke={2.2} /></button>
   </header>
 
   <div class="corps">
@@ -476,8 +477,12 @@
     justify-content: space-between;
     padding: 8px 8px 8px 16px;
     padding-top: calc(8px + env(safe-area-inset-top));
-    background: var(--accent);
-    color: var(--sur-accent);
+    background: var(--fond);
+    color: var(--texte);
+    border-bottom: 1px solid var(--bord);
+    font-family: var(--titre);
+    font-size: 1.15rem;
+    font-weight: 600;
   }
   .tete h1 {
     margin: 0;

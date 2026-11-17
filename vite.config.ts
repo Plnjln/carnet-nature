@@ -24,8 +24,8 @@ export default defineConfig({
         scope: BASE,
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#10201a',
-        theme_color: '#1f6f4a',
+        background_color: '#f4f1e8',
+        theme_color: '#f4f1e8',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -34,7 +34,8 @@ export default defineConfig({
       },
       workbox: {
         // L'app elle-même est mise en cache à l'installation (utilisable hors ligne).
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // woff2 : la police des titres, pour qu'elle reste disponible hors ligne.
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,woff2}'],
         // L'index TAXREF (plusieurs Mo) est mis en cache à la première utilisation :
         // meta.json est revérifié en ligne, les fichiers de données (nom versionné) ne changent jamais.
         // La carte (MapLibre) dépasse la limite par défaut de 2 Mo : on l'inclut quand même dans le cache hors ligne.

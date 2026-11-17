@@ -1,40 +1,59 @@
-/* Thème : contraste fort (lisible en plein soleil), grandes zones tactiles. */
+/* Identité visuelle « carnet de naturaliste » : fond papier, vert forêt, titres à empattements.
+   Contraste fort (lisible en plein soleil) et grandes zones tactiles (utilisable avec des gants). */
 
 :root {
-  --fond: #f4f6f1;
-  --surface: #ffffff;
-  --texte: #10201a;
-  --texte-doux: #4a5a52;
-  --bord: #c9d3cc;
-  --accent: #17603f;
-  --sur-accent: #ffffff;
-  --alerte: #a1260d;
+  --fond: #f4f1e8;
+  --surface: #fffdf7;
+  --surface-2: #ebe6d8;
+  --texte: #1c2520;
+  --texte-doux: #59655d;
+  --bord: #ddd6c5;
+  --accent: #2f5d43;
+  --accent-fort: #234833;
+  --sur-accent: #fdfbf4;
+  --accent-doux: #dfe8d4;
+  --alerte: #a23b1f;
+  --ombre: 0 1px 2px rgb(45 40 25 / 0.06), 0 6px 18px rgb(45 40 25 / 0.08);
+  --ombre-forte: 0 2px 6px rgb(45 40 25 / 0.1), 0 14px 32px rgb(45 40 25 / 0.14);
+  --rayon: 16px;
+  --titre: 'Fraunces Variable', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --corps: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='clair']) {
-    --fond: #0c1611;
-    --surface: #16241d;
-    --texte: #f1f5f2;
-    --texte-doux: #a9b8b0;
-    --bord: #2c4036;
-    --accent: #5fd39a;
-    --sur-accent: #06140d;
-    --alerte: #ff8a70;
+    --fond: #111712;
+    --surface: #19211b;
+    --surface-2: #222c25;
+    --texte: #ece8dc;
+    --texte-doux: #a5afa4;
+    --bord: #2d3930;
+    --accent: #8cc49c;
+    --accent-fort: #a8d8b5;
+    --sur-accent: #0e1911;
+    --accent-doux: #213328;
+    --alerte: #f08a6c;
+    --ombre: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 18px rgb(0 0 0 / 0.25);
+    --ombre-forte: 0 2px 6px rgb(0 0 0 / 0.35), 0 14px 32px rgb(0 0 0 / 0.4);
     color-scheme: dark;
   }
 }
 
 :root[data-theme='sombre'] {
-  --fond: #0c1611;
-  --surface: #16241d;
-  --texte: #f1f5f2;
-  --texte-doux: #a9b8b0;
-  --bord: #2c4036;
-  --accent: #5fd39a;
-  --sur-accent: #06140d;
-  --alerte: #ff8a70;
+  --fond: #111712;
+  --surface: #19211b;
+  --surface-2: #222c25;
+  --texte: #ece8dc;
+  --texte-doux: #a5afa4;
+  --bord: #2d3930;
+  --accent: #8cc49c;
+  --accent-fort: #a8d8b5;
+  --sur-accent: #0e1911;
+  --accent-doux: #213328;
+  --alerte: #f08a6c;
+  --ombre: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 18px rgb(0 0 0 / 0.25);
+  --ombre-forte: 0 2px 6px rgb(0 0 0 / 0.35), 0 14px 32px rgb(0 0 0 / 0.4);
   color-scheme: dark;
 }
 
@@ -49,15 +68,17 @@ body {
   margin: 0;
   background: var(--fond);
   color: var(--texte);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--corps);
   font-size: 17px;
-  line-height: 1.4;
+  line-height: 1.45;
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -67,14 +88,23 @@ button {
   touch-action: manipulation;
 }
 
+h1,
+h2,
+h3 {
+  font-family: var(--titre);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
 h1 {
-  font-size: 1.5rem;
-  margin: 0 0 8px;
+  font-size: 1.7rem;
+  margin: 4px 0 10px;
 }
 
 h2 {
-  font-size: 1.15rem;
-  margin: 24px 0 8px;
+  font-size: 1.25rem;
+  margin: 28px 0 10px;
 }
 
 p {
@@ -85,10 +115,23 @@ em {
   font-style: italic;
 }
 
+a {
+  color: var(--accent);
+}
+
+::selection {
+  background: var(--accent-doux);
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .page {
   max-width: 760px;
   margin: 0 auto;
-  padding: 16px 16px 24px;
+  padding: 18px 16px 24px;
 }
 
 .doux {
@@ -108,12 +151,18 @@ em {
   justify-content: center;
   gap: 8px;
   min-height: 56px;
-  padding: 0 20px;
+  padding: 0 22px;
   border-radius: 14px;
   border: 2px solid var(--accent);
   background: var(--accent);
   color: var(--sur-accent);
   font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+.bouton:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .bouton.secondaire {
@@ -122,7 +171,7 @@ em {
 }
 
 .bouton.danger {
-  border-color: var(--alerte);
+  border-color: color-mix(in srgb, var(--alerte) 55%, transparent);
   background: transparent;
   color: var(--alerte);
 }
@@ -130,4 +179,19 @@ em {
 .bouton:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Les cartes et panneaux en surface prennent une ombre douce plutôt qu'un aplat. */
+.carte-surface {
+  background: var(--surface);
+  border-radius: var(--rayon);
+  box-shadow: var(--ombre);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
 }

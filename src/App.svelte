@@ -21,13 +21,14 @@
   import { obsStore } from './stores/obs.svelte';
   import { sessionStore } from './stores/session.svelte';
   import BottomNav from './ui/BottomNav.svelte';
+  import Icon, { type IconName } from './ui/Icon.svelte';
   import Placeholder from './ui/Placeholder.svelte';
   import type { Screen } from './ui/screens';
   import type { FieldSession, Observation } from './domain/types';
 
   type Theme = 'auto' | 'clair' | 'sombre';
   const THEMES: Theme[] = ['auto', 'clair', 'sombre'];
-  const ICONES_THEME: Record<Theme, string> = { auto: '🌗', clair: '☀️', sombre: '🌙' };
+  const ICONES_THEME: Record<Theme, IconName> = { auto: 'auto', clair: 'soleil', sombre: 'lune' };
 
   let screen = $state<Screen>('galerie');
   let saisieOuverte = $state(false);
@@ -191,12 +192,19 @@
 
 <div class="haut">
   <header class="entete">
-    <span class="titre">Carnet Nature</span>
+    <span class="titre">
+      <span class="marque"><Icon name="feuille" size={20} stroke={2} /></span>
+      Carnet <em>Nature</em>
+    </span>
     <span class="boutons">
-      <button class="theme" class:actif={sortiesOuvertes} onclick={() => (sortiesOuvertes = true)} aria-label="Sorties de terrain">🥾</button>
-      <button class="theme" class:actif={screen === 'donnees'} onclick={() => (screen = 'donnees')} aria-label="Données, sauvegarde et réglages">💾</button>
-      <button class="theme" onclick={changerTheme} aria-label="Thème : {theme}. Changer de thème">
-        {ICONES_THEME[theme]}
+      <button class="outil" class:actif={sortiesOuvertes || !!sortie} onclick={() => (sortiesOuvertes = true)} aria-label="Sorties de terrain">
+        <Icon name="sortie" size={22} />
+      </button>
+      <button class="outil" class:actif={screen === 'donnees'} onclick={() => (screen = 'donnees')} aria-label="Données, sauvegarde et réglages">
+        <Icon name="donnees" size={22} />
+      </button>
+      <button class="outil" onclick={changerTheme} aria-label="Thème : {theme}. Changer de thème">
+        <Icon name={ICONES_THEME[theme]} size={22} />
       </button>
     </span>
   </header>
@@ -328,8 +336,12 @@
     gap: 8px;
     height: 56px;
     padding: 0 8px 0 16px;
-    background: var(--surface);
-    border-bottom: 2px solid var(--accent);
+    background: var(--accent-doux);
+    border-bottom: 1px solid var(--bord);
+  }
+  .sortie-texte strong {
+    font-family: var(--titre);
+    font-weight: 600;
   }
   .sortie-texte {
     flex: 1;
@@ -361,33 +373,59 @@
     background: transparent;
     color: var(--accent);
   }
+  /* En-tête papier : la hauteur reste de 64 px (la carte s'y cale). */
   .entete {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 8px 8px 16px;
-    padding-top: calc(8px + env(safe-area-inset-top));
-    background: var(--accent);
-    color: var(--sur-accent);
+    height: calc(64px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 6px 0 16px;
+    background: color-mix(in srgb, var(--fond) 90%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--bord);
+    color: var(--texte);
   }
   .titre {
-    font-size: 1.2rem;
-    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--titre);
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .titre em {
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .marque {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    background: var(--accent);
+    color: var(--sur-accent);
   }
   .boutons {
     display: flex;
     gap: 2px;
   }
-  .theme.actif {
-    background: rgba(255, 255, 255, 0.25);
-  }
-  .theme {
-    width: 48px;
-    height: 48px;
+  .outil {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
     border: 0;
-    border-radius: 50%;
+    border-radius: 14px;
     background: transparent;
-    font-size: 1.4rem;
+    color: var(--texte-doux);
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .outil.actif {
+    background: var(--accent-doux);
+    color: var(--accent);
   }
   main {
     /* Laisse la place de la barre du bas. */
@@ -407,6 +445,13 @@
     color: var(--fond);
     font-weight: 700;
     text-align: center;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--ombre-forte);
+    animation: monte 0.22s ease-out;
+  }
+  @keyframes monte {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
   }
 </style>

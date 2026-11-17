@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '../../ui/Icon.svelte';
   // Déroulement d'une clé : une question à la fois, avec le rappel des réponses déjà données.
   import { AVERTISSEMENT, CLES } from '../../keys/cles';
   import { nombreDans } from '../../keys/annuaire';
@@ -45,7 +46,7 @@
 
 <div class="fiche" role="dialog" aria-modal="true" aria-label={cle.titre}>
   <header class="tete">
-    <button class="retour" onclick={onClose} aria-label="Retour">←</button>
+    <button class="retour" onclick={onClose} aria-label="Retour"><Icon name="retour" size={24} stroke={2.2} /></button>
     <span>{cle.titre}</span>
   </header>
 
@@ -117,9 +118,12 @@
     gap: 8px;
     padding: 8px;
     padding-top: calc(8px + env(safe-area-inset-top));
-    background: var(--accent);
-    color: var(--sur-accent);
-    font-weight: 700;
+    background: var(--fond);
+    color: var(--texte);
+    border-bottom: 1px solid var(--bord);
+    font-family: var(--titre);
+    font-size: 1.15rem;
+    font-weight: 600;
   }
   .retour {
     width: 48px;

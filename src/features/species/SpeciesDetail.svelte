@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '../../ui/Icon.svelte';
   // Fiche espèce : mes observations d'un taxon, sa phénologie par mois, ses photos,
   // une description de référence (Wikipédia) et les espèces proches du même genre.
   import { onMount } from 'svelte';
@@ -68,7 +69,7 @@
 
 <div class="fiche" role="dialog" aria-modal="true" aria-label="Fiche espèce">
   <header class="tete" style="--couleur: {groupe.color}">
-    <button class="retour" onclick={onClose} aria-label="Retour">←</button>
+    <button class="retour" onclick={onClose} aria-label="Retour"><Icon name="retour" size={24} stroke={2.2} /></button>
     <GroupIcon group={espece.group} size="1.5rem" />
     <span>{groupe.label}</span>
   </header>
@@ -203,9 +204,12 @@
     gap: 8px;
     padding: 8px;
     padding-top: calc(8px + env(safe-area-inset-top));
-    background: var(--couleur);
-    color: #fff;
-    font-weight: 700;
+    background: color-mix(in srgb, var(--couleur) 16%, var(--fond));
+    color: var(--texte);
+    border-bottom: 1px solid var(--bord);
+    font-family: var(--titre);
+    font-size: 1.15rem;
+    font-weight: 600;
   }
   .retour {
     width: 48px;
