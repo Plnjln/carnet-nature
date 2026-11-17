@@ -5,6 +5,10 @@
   import { initTaxonIndex, searchTaxa, type IndexInfo } from '../../taxonomy/client';
   import type { SearchHit } from '../../taxonomy/search-core';
   import GroupIcon from '../../ui/GroupIcon.svelte';
+  import RefPhoto from '../../ui/RefPhoto.svelte';
+
+  /** Ouvrir la fiche d'un résultat (description, photo de référence, statuts, espèces voisines). */
+  let { onOpenSpecies }: { onOpenSpecies: (h: SearchHit) => void } = $props();
 
   const RANGS: Record<string, string> = {
     species: 'espèce',
@@ -96,16 +100,20 @@
 
   <ul class="liste">
     {#each hits as h (h.cdNom)}
-      <li class="carte" style="--couleur: {GROUPS[h.group].color}">
-        <span class="icone"><GroupIcon group={h.group} size="1.8rem" /></span>
-        <div class="texte">
-          <strong>{h.vern || h.sci}</strong>
-          <em>{h.sci}</em>
-          <small class="rang">
-            {RANGS[h.rank] ?? h.rank}{#if h.matchedKind === 'synonyme'} · synonyme : {h.matched}{/if}
-          </small>
-          <small class="lignee">{lignee(h).join(' › ')}</small>
-        </div>
+      <li>
+        <button class="carte" style="--couleur: {GROUPS[h.group].color}" onclick={() => onOpenSpecies(h)}>
+          <!-- Photo de référence (chargée quand la ligne est visible), sinon icône du groupe. -->
+          <span class="vignette"><RefPhoto sci={h.sci}><GroupIcon group={h.group} size="1.6rem" /></RefPhoto></span>
+          <span class="texte">
+            <strong>{h.vern || h.sci}</strong>
+            <em>{h.sci}</em>
+            <small class="rang">
+              {RANGS[h.rank] ?? h.rank}{#if h.matchedKind === 'synonyme'} · synonyme : {h.matched}{/if}
+            </small>
+            <small class="lignee">{lignee(h).join(' › ')}</small>
+          </span>
+          <span class="chevron" aria-hidden="true">›</span>
+        </button>
       </li>
     {/each}
   </ul>
@@ -137,18 +145,46 @@
     display: flex;
     gap: 12px;
     align-items: center;
-    padding: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
     border-radius: 14px;
     background: var(--surface);
-    border-left: 8px solid var(--couleur);
+    border-left: 4px solid var(--couleur);
+    box-shadow: var(--ombre);
+    color: var(--texte);
+    text-align: left;
   }
-  .icone {
+  .carte:active {
+    transform: scale(0.99);
+  }
+  .vignette {
+    flex: none;
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--couleur) 15%, var(--surface));
     color: var(--couleur);
   }
   .texte {
+    flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
+  }
+  .texte strong {
+    font-family: var(--titre);
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
+  .chevron {
+    flex: none;
+    color: var(--texte-doux);
+    font-size: 1.5rem;
+    line-height: 1;
   }
   .texte small {
     color: var(--texte-doux);

@@ -244,7 +244,8 @@
     min-height: 60px;
     padding: 8px 12px;
     border: 0;
-    border-left: 8px solid var(--couleur);
+    border-left: 4px solid var(--couleur);
+    box-shadow: var(--ombre);
     border-radius: 14px;
     background: var(--surface);
     color: var(--texte);
@@ -286,7 +287,8 @@
     align-items: center;
     gap: 10px;
     padding: 8px 8px 8px 12px;
-    border-left: 8px solid var(--couleur);
+    border-left: 4px solid var(--couleur);
+    box-shadow: var(--ombre);
     border-radius: 14px;
     background: var(--surface);
   }

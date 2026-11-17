@@ -8,9 +8,19 @@
   import RefPhoto from '../../ui/RefPhoto.svelte';
   import Thumb from '../../ui/Thumb.svelte';
   import { newPerYear, summarize, type SpeciesSummary } from './species';
+  import type { SearchHit } from '../../taxonomy/search-core';
   import TaxonSearchScreen from './TaxonSearchScreen.svelte';
 
-  let { onOpenSpecies, onOpenStats }: { onOpenSpecies: (e: SpeciesSummary) => void; onOpenStats: () => void } = $props();
+  let {
+    onOpenSpecies,
+    onOpenTaxon,
+    onOpenStats,
+  }: {
+    onOpenSpecies: (e: SpeciesSummary) => void;
+    /** Ouvrir la fiche d'un taxon trouvé dans TAXREF (observé ou non). */
+    onOpenTaxon: (h: SearchHit) => void;
+    onOpenStats: () => void;
+  } = $props();
 
   type Tri = 'recentes' | 'frequentes' | 'alpha';
   const TRIS: { id: Tri; label: string }[] = [
@@ -60,7 +70,7 @@
     <p class="doux">Ta liste se remplira au fil des observations : chaque taxon identifié y apparaît avec la date de sa première observation.</p>
   {:else}
     <p class="total"><strong>{resume.especes.length.toLocaleString('fr-FR')}</strong> taxon{resume.especes.length > 1 ? 's' : ''} observé{resume.especes.length > 1 ? 's' : ''}</p>
-    <button class="bouton secondaire stats" onclick={onOpenStats}>📈 Statistiques et graphiques</button>
+    <button class="bouton secondaire stats" onclick={onOpenStats}>Statistiques et graphiques</button>
     {#if resume.nonRapprochees > 0}
       <p class="doux">{resume.nonRapprochees.toLocaleString('fr-FR')} observation{resume.nonRapprochees > 1 ? 's' : ''} au nom saisi librement ne {resume.nonRapprochees > 1 ? 'sont' : 'est'} pas comptée{resume.nonRapprochees > 1 ? 's' : ''}.</p>
     {/if}
@@ -128,13 +138,21 @@
 </section>
 
 {#if rechercheTaxref}
-  <TaxonSearchScreen />
+  <TaxonSearchScreen onOpenSpecies={onOpenTaxon} />
 {/if}
 
 <style>
   .total {
-    font-size: 1.15rem;
-    margin-bottom: 4px;
+    font-size: 1.05rem;
+    margin-bottom: 8px;
+    color: var(--texte-doux);
+  }
+  .total strong {
+    font-family: var(--titre);
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
   }
   .stats {
     margin: 4px 0;
@@ -226,7 +244,8 @@
     width: 100%;
     padding: 8px;
     border: 0;
-    border-left: 8px solid var(--couleur);
+    border-left: 4px solid var(--couleur);
+    box-shadow: var(--ombre);
     border-radius: 14px;
     background: var(--surface);
     color: var(--texte);
@@ -247,6 +266,11 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
+  }
+  .texte strong {
+    font-family: var(--titre);
+    font-weight: 600;
+    font-size: 1.05rem;
   }
   .texte strong,
   .texte em {

@@ -552,7 +552,8 @@
     margin: 0;
     padding: 8px 12px;
     border: 0;
-    border-left: 8px solid var(--couleur);
+    border-left: 4px solid var(--couleur);
+    box-shadow: var(--ombre);
     border-radius: 14px;
     background: var(--surface);
     color: var(--texte);

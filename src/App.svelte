@@ -11,7 +11,7 @@
   import KeyRunner from './features/keys/KeyRunner.svelte';
   import KeysScreen from './features/keys/KeysScreen.svelte';
   import type { IdKey } from './keys/types';
-  import type { SpeciesSummary } from './features/species/species';
+  import { summaryForTaxon, type SpeciesSummary, type TaxonRef } from './features/species/species';
   import SpeciesDetail from './features/species/SpeciesDetail.svelte';
   import SpeciesScreen from './features/species/SpeciesScreen.svelte';
   import StatsScreen from './features/species/StatsScreen.svelte';
@@ -37,16 +37,35 @@
   let ficheVersion = $state(0);
   let aModifier = $state.raw<Observation | null>(null);
   let positionSaisie = $state.raw<{ lat: number; lon: number } | undefined>(undefined);
-  let espece = $state.raw<SpeciesSummary | null>(null);
+  // Fiches espèce ouvertes, de la première à celle affichée (pile, pour le bouton retour).
+  let pileEspeces = $state.raw<SpeciesSummary[]>([]);
+  const espece = $derived(pileEspeces.length ? pileEspeces[pileEspeces.length - 1] : null);
   let statsOuvertes = $state(false);
   let cleOuverte = $state.raw<IdKey | null>(null);
   let cheminAnnuaire = $state.raw<string[]>([]);
+
+  /** Ouvre la fiche d'un taxon de ma liste. */
+  function ouvrirEspece(e: SpeciesSummary) {
+    pileEspeces = [e];
+  }
+
+  /** Ouvre la fiche d'un taxon de référence (recherche TAXREF, espèce du même genre), par-dessus la fiche affichée. */
+  function ouvrirTaxon(t: TaxonRef) {
+    const resume = summaryForTaxon(obsStore.rows, t);
+    if (espece?.key === resume.key) return;
+    pileEspeces = [...pileEspeces, resume];
+  }
+
+  /** Retour : revient à la fiche précédente, ou ferme. */
+  function fermerEspece() {
+    pileEspeces = pileEspeces.slice(0, -1);
+  }
 
   /** Depuis la fiche espèce : n'afficher que ce taxon, sur la carte ou dans la galerie. */
   function montrerEspece(ecran: Screen) {
     if (!espece) return;
     filters.seulementTaxon(espece.key, espece.vern || espece.sci);
-    espece = null;
+    pileEspeces = [];
     screen = ecran;
     window.scrollTo({ top: 0 });
   }
@@ -114,8 +133,8 @@
     if (obsStore.rows.length === 0) return;
     const DEUX_SEMAINES = 14 * 24 * 3600 * 1000;
     const derniere = await lastBackupAt();
-    if (!derniere) annoncer('Aucune sauvegarde pour l\'instant : bouton 💾 en haut → Sauvegarder tout.', 8000);
-    else if (Date.now() - derniere.getTime() > DEUX_SEMAINES) annoncer('Dernière sauvegarde il y a plus de deux semaines : bouton 💾 en haut → Sauvegarder tout.', 8000);
+    if (!derniere) annoncer('Aucune sauvegarde pour l\'instant : bouton Données en haut (l'archive) → Sauvegarder tout.', 8000);
+    else if (Date.now() - derniere.getTime() > DEUX_SEMAINES) annoncer('Dernière sauvegarde il y a plus de deux semaines : bouton Données en haut (l'archive) → Sauvegarder tout.', 8000);
   }
 
   /** Complète en arrière-plan le lieu, l'altitude et la météo des observations en attente. */
@@ -235,7 +254,7 @@
       <Placeholder icon="🗺️" title="Carte indisponible" text="La carte n'a pas pu être chargée. Vérifie la connexion puis réessaie." />
     {/await}
   {:else if screen === 'especes'}
-    <SpeciesScreen onOpenSpecies={(e) => (espece = e)} onOpenStats={() => (statsOuvertes = true)} />
+    <SpeciesScreen onOpenSpecies={ouvrirEspece} onOpenTaxon={ouvrirTaxon} onOpenStats={() => (statsOuvertes = true)} />
   {:else if screen === 'cles'}
     <KeysScreen chemin={cheminAnnuaire} onNavigate={(c) => (cheminAnnuaire = c)} onOpenKey={(c) => (cleOuverte = c)} />
   {:else}
@@ -292,13 +311,17 @@
 {/if}
 
 {#if espece}
-  <SpeciesDetail
-    {espece}
-    onClose={() => (espece = null)}
-    onOpenObs={(id) => (ficheId = id)}
-    onShowMap={() => montrerEspece('carte')}
-    onShowGallery={() => montrerEspece('galerie')}
-  />
+  <!-- Une fiche par taxon : en ouvrir une autre (espèce du même genre) l'empile, « retour » revient à la précédente. -->
+  {#key espece.key}
+    <SpeciesDetail
+      {espece}
+      onClose={fermerEspece}
+      onOpenObs={(id) => (ficheId = id)}
+      onShowMap={() => montrerEspece('carte')}
+      onShowGallery={() => montrerEspece('galerie')}
+      onOpenSpecies={ouvrirTaxon}
+    />
+  {/key}
 {/if}
 
 {#if ficheId}

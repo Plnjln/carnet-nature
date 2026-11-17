@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ObsLite } from '../src/domain/types';
-import { newPerYear, perMonth, summarize } from '../src/features/species/species';
+import { newPerYear, perMonth, summarize, summaryForTaxon } from '../src/features/species/species';
 import { accumulation, taxaPerMonth, yearly } from '../src/features/species/stats';
 import { circle, pointInPolygon, type LonLat } from '../src/geo/geometry';
 
@@ -57,6 +57,16 @@ describe('regroupement par taxon', () => {
     const t = taxaPerMonth(rows);
     expect(t[4]).toBe(2); // deux taxons différents en mai
     expect(t[6]).toBe(1); // le nom libre de juillet ne compte pas
+  });
+
+  it('ouvre la fiche d’un taxon observé avec mes chiffres, et celle d’un taxon jamais vu à vide', () => {
+    const ref = { sci: 'X', vern: 'Y', group: 'oiseaux' as const, family: 'F', order: 'O' };
+    const vu = summaryForTaxon(rows, { ...ref, cdNom: 1 });
+    expect(vu.key).toBe('taxref:1');
+    expect(vu.n).toBe(2);
+    expect(vu.photoId).toBe('photo-a');
+    const jamais = summaryForTaxon(rows, { ...ref, cdNom: 999 });
+    expect(jamais).toMatchObject({ key: 'taxref:999', sci: 'X', vern: 'Y', n: 0, photoId: '' });
   });
 
   it('construit une courbe d’accumulation croissante', () => {

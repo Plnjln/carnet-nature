@@ -45,6 +45,27 @@ export function summarize(rows: ObsLite[]): { especes: SpeciesSummary[]; nonRapp
   return { especes: Array.from(parCle.values()), nonRapprochees };
 }
 
+/** Taxon de référence (résultat de recherche TAXREF, espèce du même genre…). */
+export interface TaxonRef {
+  cdNom: number;
+  sci: string;
+  vern: string;
+  group: GroupId;
+  family: string;
+  order: string;
+}
+
+/**
+ * Résumé d'un taxon pour ouvrir sa fiche : celui de mes observations s'il y en a,
+ * sinon un résumé vide (taxon jamais observé).
+ */
+export function summaryForTaxon(rows: ObsLite[], t: TaxonRef): SpeciesSummary {
+  const key = `taxref:${t.cdNom}`;
+  const existant = summarize(rows.filter((o) => o.taxonKey === key)).especes[0];
+  if (existant) return existant;
+  return { key, sci: t.sci, vern: t.vern, group: t.group, family: t.family, order: t.order, n: 0, individus: 0, premiere: 0, derniere: 0, photoId: '' };
+}
+
 /** Nombre de nouveaux taxons par année (année de la première observation), de la plus récente à la plus ancienne. */
 export function newPerYear(especes: SpeciesSummary[]): { annee: number; n: number }[] {
   const compte = new Map<number, number>();

@@ -156,10 +156,10 @@
         </div>
         <div class="outils-photo">
           {#if photoCourante && obs.mainPhotoId !== photoCourante.id}
-            <button class="outil" disabled={occupePhoto} onclick={definirPrincipale}>★ Principale</button>
+            <button class="outil" disabled={occupePhoto} onclick={definirPrincipale}>Photo principale</button>
           {/if}
-          <button class="outil" disabled={occupePhoto || !url} onclick={() => (recadrage = true)}>✂ Recadrer</button>
-          <button class="outil danger" disabled={occupePhoto} onclick={retirer}>🗑 Retirer</button>
+          <button class="outil" disabled={occupePhoto || !url} onclick={() => (recadrage = true)}>Recadrer</button>
+          <button class="outil danger" disabled={occupePhoto} onclick={retirer}>Retirer</button>
         </div>
         {#if erreurPhoto}<p class="alerte marge">{erreurPhoto}</p>{/if}
       {/if}

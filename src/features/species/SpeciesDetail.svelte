@@ -21,12 +21,15 @@
     onOpenObs,
     onShowMap,
     onShowGallery,
+    onOpenSpecies,
   }: {
     espece: SpeciesSummary;
     onClose: () => void;
     onOpenObs: (id: string) => void;
     onShowMap: () => void;
     onShowGallery: () => void;
+    /** Ouvrir la fiche d'un autre taxon (espèce du même genre). */
+    onOpenSpecies: (t: SearchHit) => void;
   } = $props();
 
   const MOIS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
@@ -44,6 +47,8 @@
   const premiere = $derived(observations.length ? observations[observations.length - 1].t : espece.premiere);
   const derniere = $derived(observations.length ? observations[0].t : espece.derniere);
   const localisees = $derived(observations.filter((o) => o.lat !== undefined).length);
+  // Taxon ouvert depuis la recherche TAXREF ou les espèces du même genre : peut-être jamais observé.
+  const observee = $derived(observations.length > 0);
 
   let limite = $state(PAS);
   let texte = $state.raw<RefText | null>(null);
@@ -75,17 +80,19 @@
   </header>
 
   <div class="corps">
+    {#if !espece.photoId}
+      <!-- Pas de photo personnelle : grande photo de référence en tête de fiche. -->
+      <div class="banniere" style="--couleur: {groupe.color}">
+        <RefPhoto sci={espece.sci} grande onFound={(p: RefPhotoInfo) => (credit = p.attribution)}>
+          <GroupIcon group={espece.group} size="4rem" />
+        </RefPhoto>
+      </div>
+    {/if}
     <div class="infos">
       <div class="entete" style="--couleur: {groupe.color}">
-        <div class="portrait">
-          {#if espece.photoId}
-            <Thumb photoId={espece.photoId} />
-          {:else}
-            <RefPhoto sci={espece.sci} grande onFound={(p: RefPhotoInfo) => (credit = p.attribution)}>
-              <GroupIcon group={espece.group} size="3rem" />
-            </RefPhoto>
-          {/if}
-        </div>
+        {#if espece.photoId}
+          <div class="portrait"><Thumb photoId={espece.photoId} /></div>
+        {/if}
         <div>
           <h1>{espece.vern || espece.sci}</h1>
           {#if espece.vern}<p><em>{espece.sci}</em></p>{/if}
@@ -95,6 +102,9 @@
       {#if credit}<p class="credit">Photo de référence : {credit}, via iNaturalist.</p>{/if}
       <div class="bloc-statuts"><StatusBadges cdNom={cdNomDe(espece.key)} detail /></div>
 
+      {#if !observee}
+        <p class="encart">Ce taxon n'est pas encore dans ton carnet.</p>
+      {:else}
       <ul class="faits">
         <li><span>Observations</span><strong>{observations.length.toLocaleString('fr-FR')}</strong></li>
         <li><span>Individus comptés</span><strong>{individus.toLocaleString('fr-FR')}</strong></li>
@@ -120,6 +130,7 @@
           </div>
         {/each}
       </div>
+      {/if}
 
       <h2>Description</h2>
       {#if texte}
@@ -139,24 +150,27 @@
 
       {#if proches.length}
         <h2>Espèces du même genre</h2>
-        <p class="doux">Les espèces avec lesquelles la confusion est la plus probable. Celles que tu as déjà observées sont marquées d'une coche.</p>
+        <p class="doux">Les espèces avec lesquelles la confusion est la plus probable. Touche une espèce pour ouvrir sa fiche ; celles que tu as déjà observées sont marquées d'une coche.</p>
         <ul class="proches">
           {#each proches as p (p.cdNom)}
             <li>
-              <span class="vignette" style="--couleur: {groupe.color}">
-                <RefPhoto sci={p.sci}><GroupIcon group={p.group} size="1.3rem" /></RefPhoto>
-              </span>
-              <span class="noms">
-                <strong>{p.vern || p.sci}</strong>
-                {#if p.vern}<em>{p.sci}</em>{/if}
-              </span>
-              {#if dejaVues.has(`taxref:${p.cdNom}`)}<span class="vue" title="Déjà observée">✓</span>{/if}
+              <button class="proche" onclick={() => onOpenSpecies(p)}>
+                <span class="vignette" style="--couleur: {groupe.color}">
+                  <RefPhoto sci={p.sci}><GroupIcon group={p.group} size="1.3rem" /></RefPhoto>
+                </span>
+                <span class="noms">
+                  <strong>{p.vern || p.sci}</strong>
+                  {#if p.vern}<em>{p.sci}</em>{/if}
+                </span>
+                {#if dejaVues.has(`taxref:${p.cdNom}`)}<span class="vue" title="Déjà observée">✓</span>{/if}
+                <span class="chevron" aria-hidden="true">›</span>
+              </button>
             </li>
           {/each}
         </ul>
       {/if}
 
-      {#if avecPhoto.length}
+      {#if observee && avecPhoto.length}
         <h2>Mes photos</h2>
         <div class="photos">
           {#each avecPhoto.slice(0, NB_PHOTOS) as o (o.id)}
@@ -170,6 +184,7 @@
         {/if}
       {/if}
 
+      {#if observee}
       <h2>Mes observations</h2>
       <ul class="liste">
         {#each observations.slice(0, limite) as o (o.id)}
@@ -184,6 +199,7 @@
       </ul>
       {#if observations.length > limite}
         <button class="bouton secondaire" onclick={() => (limite += PAS)}>Afficher plus</button>
+      {/if}
       {/if}
     </div>
   </div>
@@ -320,14 +336,55 @@
     border-radius: 14px;
     background: var(--surface);
   }
-  .proches li {
+  .proches {
+    box-shadow: var(--ombre);
+    overflow: hidden;
+  }
+  .proche {
     display: flex;
     align-items: center;
     gap: 12px;
+    width: 100%;
+    min-height: 64px;
     padding: 8px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--texte);
+    text-align: left;
+  }
+  .proche:active {
+    background: var(--surface-2);
+  }
+  .proche strong {
+    font-family: var(--titre);
+    font-weight: 600;
+  }
+  .proche em {
+    color: var(--texte-doux);
+    font-size: 0.9rem;
+  }
+  .chevron {
+    color: var(--texte-doux);
+    font-size: 1.5rem;
+    line-height: 1;
   }
   .proches li + li {
     border-top: 1px solid var(--bord);
+  }
+  /* Grande photo de référence en tête de fiche, quand il n'y a pas de photo personnelle. */
+  .banniere {
+    height: min(42vh, 300px);
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--couleur) 14%, var(--surface));
+    color: var(--couleur);
+  }
+  .encart {
+    margin: 14px 0 0;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--accent-doux);
+    font-weight: 600;
   }
   .vignette {
     flex: none;
