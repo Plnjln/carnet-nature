@@ -133,8 +133,8 @@
     if (obsStore.rows.length === 0) return;
     const DEUX_SEMAINES = 14 * 24 * 3600 * 1000;
     const derniere = await lastBackupAt();
-    if (!derniere) annoncer('Aucune sauvegarde pour l\'instant : bouton Données en haut (l'archive) → Sauvegarder tout.', 8000);
-    else if (Date.now() - derniere.getTime() > DEUX_SEMAINES) annoncer('Dernière sauvegarde il y a plus de deux semaines : bouton Données en haut (l'archive) → Sauvegarder tout.', 8000);
+    if (!derniere) annoncer('Aucune sauvegarde pour l’instant : bouton Données en haut (l’archive) → Sauvegarder tout.', 8000);
+    else if (Date.now() - derniere.getTime() > DEUX_SEMAINES) annoncer('Dernière sauvegarde il y a plus de deux semaines : bouton Données en haut (l’archive) → Sauvegarder tout.', 8000);
   }
 
   /** Complète en arrière-plan le lieu, l'altitude et la météo des observations en attente. */
